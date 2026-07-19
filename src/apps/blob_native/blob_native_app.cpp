@@ -16,14 +16,14 @@ namespace
   const int SCREEN_H = 240;
   const float CENTER_X = SCREEN_W / 2.0f;
   const float CENTER_Y = SCREEN_H / 2.0f;
-  const float BLOB_RADIUS = 70.0f;
+  const float BLOB_RADIUS = 20.0f;
   const int POINTS = 48;
   const uint16_t BLOB_COLOR = CYAN;
   const uint16_t OUTLINE_COLOR = BLUE;
   const uint16_t BG_COLOR = BLACK;
   const uint16_t GUIDE_COLOR = GRAY;
   const int GLOW_LAYER_COUNT = 3;
-  const float GLOW_LAYER_SCALE[GLOW_LAYER_COUNT] = {1.24f, 1.14f, 1.06f};
+  const float GLOW_LAYER_SCALE[GLOW_LAYER_COUNT] = {1.3f, 1.2f, 1.1f};
   const uint16_t GLOW_LAYER_COLOR[GLOW_LAYER_COUNT] = {0x0008, 0x082b, 0x106f};
 
   float blob_x = CENTER_X;
@@ -167,12 +167,12 @@ namespace
     }
   }
 
-  void draw_blob_outline(const int16_t *px, const int16_t *py)
+  void draw_blob_outline(const int16_t *px, const int16_t *py, uint16_t color)
   {
     for (int i = 0; i < POINTS; i++)
     {
       int next = (i + 1) % POINTS;
-      Paint_DrawLine(px[i], py[i], px[next], py[next], OUTLINE_COLOR, DOT_PIXEL_1X1, LINE_STYLE_SOLID);
+      Paint_DrawLine(px[i], py[i], px[next], py[next], color, DOT_PIXEL_1X1, LINE_STYLE_SOLID);
     }
   }
 
@@ -185,7 +185,7 @@ namespace
     }
   }
 
-  void draw_blob_glow(float cx, float cy, const int16_t *px, const int16_t *py)
+  void draw_blob_glow(float cx, float cy, const int16_t *px, const int16_t *py, uint16_t base_color)
   {
     int16_t glow_px[POINTS];
     int16_t glow_py[POINTS];
@@ -197,9 +197,19 @@ namespace
       for (int i = 0; i < POINTS; i++)
       {
         int next = (i + 1) % POINTS;
-        Paint_DrawLine(glow_px[i], glow_py[i], glow_px[next], glow_py[next], GLOW_LAYER_COLOR[layer], DOT_PIXEL_1X1, LINE_STYLE_SOLID);
+        const uint16_t layer_color = (base_color == BG_COLOR) ? BG_COLOR : GLOW_LAYER_COLOR[layer];
+        Paint_DrawLine(glow_px[i], glow_py[i], glow_px[next], glow_py[next], layer_color, DOT_PIXEL_1X1, LINE_STYLE_SOLID);
       }
     }
+  }
+
+  void update_glow_bounds(float cx, float cy, const int16_t *px, const int16_t *py, int16_t *min_x, int16_t *min_y, int16_t *max_x, int16_t *max_y)
+  {
+    int16_t glow_px[POINTS];
+    int16_t glow_py[POINTS];
+
+    scale_blob_points(cx, cy, GLOW_LAYER_SCALE[0], px, py, glow_px, glow_py);
+    update_bounds(glow_px, glow_py, min_x, min_y, max_x, max_y);
   }
 
   void draw_blob_fill(float cx, float cy, const int16_t *px, const int16_t *py)
@@ -246,6 +256,9 @@ void blob_native_app_loop()
   float tilt_y = 0.0f;
   waveshare_native_read_tilt(&tilt_x, &tilt_y);
 
+  const float prev_blob_x = blob_x;
+  const float prev_blob_y = blob_y;
+
   const float target_x = CENTER_X + tilt_y * (CENTER_X - BLOB_RADIUS - 6.0f);
   const float target_y = CENTER_Y - tilt_x * (CENTER_Y - BLOB_RADIUS - 6.0f);
 
@@ -265,14 +278,12 @@ void blob_native_app_loop()
   int16_t max_y = 0;
   update_bounds(px_new, py_new, &min_x, &min_y, &max_x, &max_y);
 
-  int16_t glow_px[POINTS];
-  int16_t glow_py[POINTS];
-  scale_blob_points(blob_x, blob_y, GLOW_LAYER_SCALE[0], px_new, py_new, glow_px, glow_py);
-  update_bounds(glow_px, glow_py, &min_x, &min_y, &max_x, &max_y);
+  update_glow_bounds(blob_x, blob_y, px_new, py_new, &min_x, &min_y, &max_x, &max_y);
 
   if (!first_frame)
   {
     update_bounds(px_old, py_old, &min_x, &min_y, &max_x, &max_y);
+    update_glow_bounds(prev_blob_x, prev_blob_y, px_old, py_old, &min_x, &min_y, &max_x, &max_y);
   }
 
   const int16_t margin = 8;
@@ -281,10 +292,14 @@ void blob_native_app_loop()
   max_x = clamp_i16(max_x + margin, 0, SCREEN_W - 1);
   max_y = clamp_i16(max_y + margin, 0, SCREEN_H - 1);
 
-  Paint_ClearWindows(min_x, min_y, max_x + 1, max_y + 1, BG_COLOR);
+  if (!first_frame)
+  {
+    draw_blob_glow(prev_blob_x, prev_blob_y, px_old, py_old, BG_COLOR);
+    draw_blob_outline(px_old, py_old, BG_COLOR);
+  }
 
-  draw_blob_glow(blob_x, blob_y, px_new, py_new);
-  draw_blob_outline(px_new, py_new);
+  draw_blob_glow(blob_x, blob_y, px_new, py_new, OUTLINE_COLOR);
+  draw_blob_outline(px_new, py_new, OUTLINE_COLOR);
 
   waveshare_native_present_window(min_x, min_y, max_x, max_y);
 
