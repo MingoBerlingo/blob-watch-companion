@@ -11,13 +11,14 @@ This repository contains a PlatformIO project for the Waveshare RP2040-Touch-LCD
 
 ## Driver Layout
 
-- `driver/board/`: Board HAL (`DEV_Config`, GPIO/SPI/I2C/ADC/PWM/timing)
-- `driver/display/`: LCD + native paint stack
-- `driver/display/fonts/`: Font tables used by the native display stack
-- `driver/sensors/imu_qmi8658/`: QMI8658 IMU driver
-- `driver/sensors/touch_cst816s/`: CST816S touch driver
+- [driver/README.md](driver/README.md): Driver overview and entry point
+- [driver/board/README.md](driver/board/README.md): Board HAL (`DEV_Config`, GPIO/SPI/I2C/ADC/PWM/timing)
+- [driver/display/README.md](driver/display/README.md): LCD + native paint stack
+- [driver/display/fonts/README.md](driver/display/fonts/README.md): Font tables used by the native display stack
+- [driver/sensors/imu_qmi8658/README.md](driver/sensors/imu_qmi8658/README.md): QMI8658 IMU driver
+- [driver/sensors/touch_cst816s/README.md](driver/sensors/touch_cst816s/README.md): CST816S touch driver
 
-Each driver section has a short local README with details.
+The driver folder is organized by hardware responsibility, and the links above jump directly to the component docs.
 
 ## Source Layout
 

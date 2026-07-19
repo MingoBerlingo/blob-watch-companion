@@ -7,3 +7,7 @@ This part implements the LCD stack for the GC9A01A-based round panel:
 - Framebuffer push to full screen or partial windows
 
 Use this layer when maximum rendering performance is required.
+
+Supporting docs:
+
+- [fonts/README.md](fonts/README.md): Font tables used by the native paint/display pipeline
