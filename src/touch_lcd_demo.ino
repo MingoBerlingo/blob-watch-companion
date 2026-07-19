@@ -3,10 +3,12 @@
 
 #include "apps/blob_native/blob_native_app.h"
 
-void setup() {
+void setup()
+{
   blob_native_app_setup();
 }
 
-void loop() {
+void loop()
+{
   blob_native_app_loop();
 }
