@@ -16,12 +16,15 @@ namespace
   const int SCREEN_H = 240;
   const float CENTER_X = SCREEN_W / 2.0f;
   const float CENTER_Y = SCREEN_H / 2.0f;
-  const float BLOB_RADIUS = 50.0f;
+  const float BLOB_RADIUS = 70.0f;
   const int POINTS = 48;
   const uint16_t BLOB_COLOR = CYAN;
   const uint16_t OUTLINE_COLOR = BLUE;
   const uint16_t BG_COLOR = BLACK;
   const uint16_t GUIDE_COLOR = GRAY;
+  const int GLOW_LAYER_COUNT = 3;
+  const float GLOW_LAYER_SCALE[GLOW_LAYER_COUNT] = {1.24f, 1.14f, 1.06f};
+  const uint16_t GLOW_LAYER_COLOR[GLOW_LAYER_COUNT] = {0x0008, 0x082b, 0x106f};
 
   float blob_x = CENTER_X;
   float blob_y = CENTER_Y;
@@ -173,6 +176,32 @@ namespace
     }
   }
 
+  void scale_blob_points(float cx, float cy, float scale, const int16_t *px_in, const int16_t *py_in, int16_t *px_out, int16_t *py_out)
+  {
+    for (int i = 0; i < POINTS; i++)
+    {
+      px_out[i] = (int16_t)(cx + (px_in[i] - cx) * scale);
+      py_out[i] = (int16_t)(cy + (py_in[i] - cy) * scale);
+    }
+  }
+
+  void draw_blob_glow(float cx, float cy, const int16_t *px, const int16_t *py)
+  {
+    int16_t glow_px[POINTS];
+    int16_t glow_py[POINTS];
+
+    for (int layer = 0; layer < GLOW_LAYER_COUNT; layer++)
+    {
+      scale_blob_points(cx, cy, GLOW_LAYER_SCALE[layer], px, py, glow_px, glow_py);
+
+      for (int i = 0; i < POINTS; i++)
+      {
+        int next = (i + 1) % POINTS;
+        Paint_DrawLine(glow_px[i], glow_py[i], glow_px[next], glow_py[next], GLOW_LAYER_COLOR[layer], DOT_PIXEL_1X1, LINE_STYLE_SOLID);
+      }
+    }
+  }
+
   void draw_blob_fill(float cx, float cy, const int16_t *px, const int16_t *py)
   {
     const int16_t ccx = (int16_t)cx;
@@ -236,12 +265,17 @@ void blob_native_app_loop()
   int16_t max_y = 0;
   update_bounds(px_new, py_new, &min_x, &min_y, &max_x, &max_y);
 
+  int16_t glow_px[POINTS];
+  int16_t glow_py[POINTS];
+  scale_blob_points(blob_x, blob_y, GLOW_LAYER_SCALE[0], px_new, py_new, glow_px, glow_py);
+  update_bounds(glow_px, glow_py, &min_x, &min_y, &max_x, &max_y);
+
   if (!first_frame)
   {
     update_bounds(px_old, py_old, &min_x, &min_y, &max_x, &max_y);
   }
 
-  const int16_t margin = 5;
+  const int16_t margin = 8;
   min_x = clamp_i16(min_x - margin, 0, SCREEN_W - 1);
   min_y = clamp_i16(min_y - margin, 0, SCREEN_H - 1);
   max_x = clamp_i16(max_x + margin, 0, SCREEN_W - 1);
@@ -249,8 +283,7 @@ void blob_native_app_loop()
 
   Paint_ClearWindows(min_x, min_y, max_x + 1, max_y + 1, BG_COLOR);
 
-  Paint_DrawCircle((UWORD)CENTER_X, (UWORD)CENTER_Y, 119, GUIDE_COLOR, DOT_PIXEL_1X1, DRAW_FILL_EMPTY);
-  draw_blob_fill(blob_x, blob_y, px_new, py_new);
+  draw_blob_glow(blob_x, blob_y, px_new, py_new);
   draw_blob_outline(px_new, py_new);
 
   waveshare_native_present_window(min_x, min_y, max_x, max_y);
