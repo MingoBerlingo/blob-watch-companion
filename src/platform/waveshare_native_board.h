@@ -4,12 +4,12 @@
 #include <stdint.h>
 
 bool waveshare_native_begin();
-uint16_t* waveshare_native_framebuffer();
+uint16_t *waveshare_native_framebuffer();
 void waveshare_native_clear(uint16_t color);
 void waveshare_native_present_full();
 void waveshare_native_present_window(int16_t x0, int16_t y0, int16_t x1, int16_t y1);
 void waveshare_native_present_set_min_frame_ms(uint16_t min_frame_ms);
 bool waveshare_native_is_double_buffer_active();
-bool waveshare_native_read_tilt(float* tilt_x, float* tilt_y);
+bool waveshare_native_read_tilt(float *tilt_x, float *tilt_y);
 
 #endif
