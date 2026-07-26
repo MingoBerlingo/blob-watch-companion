@@ -42,11 +42,11 @@ namespace blob_native
     // Lock to the known-stable profile while full-mode branch is under investigation.
     constexpr bool BLOB_STABLE_PROFILE_LOCKED = true;
 
-    // Lightweight on-screen diagnostics overlay.
-    constexpr bool BLOB_TELEMETRY_OVERLAY_ENABLED = true;
-    // Keep overlay away from rounded screen corners to avoid clipping.
-    constexpr int16_t BLOB_TELEMETRY_X = 52;
-    constexpr int16_t BLOB_TELEMETRY_Y = 34;
+    // Lightweight performance overlay (FPS + dirty window size).
+    constexpr bool BLOB_PERF_OVERLAY_ENABLED = true;
+    constexpr int16_t BLOB_PERF_OVERLAY_X = 52;
+    constexpr int16_t BLOB_PERF_OVERLAY_Y = 34;
+    constexpr uint16_t BLOB_PERF_OVERLAY_UPDATE_MS = 250;
 
     // Glow styling.
     constexpr int GLOW_LAYER_COUNT = 3;
@@ -71,18 +71,6 @@ namespace blob_native
     constexpr float FACE_IDLE_MOUTH_BOB = BLOB_RADIUS * 0.04f;
     constexpr float FACE_IDLE_BLINK_RATE = 0.85f;
     constexpr float FACE_IDLE_BLINK_THRESHOLD = 0.965f;
-
-    // Face state-machine tuning.
-    constexpr uint16_t FACE_UPDATE_DT_MS = 16;
-    constexpr uint16_t FACE_BLINK_CLOSED_MS = 90;
-    constexpr uint16_t FACE_BLINK_OPEN_MS = 80;
-    constexpr uint16_t FACE_DOUBLE_BLINK_GAP_MS = 120;
-    constexpr uint16_t FACE_SHAKE_X_MS = 650;
-    constexpr uint16_t FACE_MOUTH_O_MS = 420;
-    constexpr uint16_t FACE_BLINK_INTERVAL_MIN_MS = 1300;
-    constexpr uint16_t FACE_BLINK_INTERVAL_MAX_MS = 3200;
-    constexpr uint8_t FACE_DOUBLE_BLINK_CHANCE_PERCENT = 25;
-    constexpr float FACE_SHAKE_SPEED_THRESHOLD = 2.2f;
 
     // Dirty-rect and backup sizing.
     constexpr float MAX_BLOB_EXTENT = (BLOB_RADIUS + 16.0f) * GLOW_LAYER_SCALE[0];
@@ -113,37 +101,10 @@ namespace blob_native
         OpenO,
     };
 
-    struct FaceAnimState
-    {
-        EyesAnimState eyes_state;
-        MouthAnimState mouth_state;
-        uint16_t eyes_timer_ms;
-        uint16_t mouth_timer_ms;
-        uint16_t next_blink_ms;
-        bool double_blink_pending;
-    };
-
-    // Runtime state updated once per frame.
+    // Runtime state shared across modules.
     struct BlobState
     {
-        float blob_x;
-        float blob_y;
-        float vel_x;
-        float vel_y;
-        float eye_dir_x;
-        float eye_dir_y;
-        float face_phase_prev;
         float phase_t;
-        FaceAnimState face_anim;
-
-        uint16_t *saved_region;
-        Rect saved_rect;
-        bool has_saved_region;
-        bool use_saved_region;
-
-        int16_t px_old[POINTS];
-        int16_t py_old[POINTS];
-        bool first_frame;
     };
 
     extern BlobState g_blob_state;
