@@ -385,7 +385,7 @@ void LCD_1IN28_SetWindows(UWORD Xstart, UWORD Ystart, UWORD Xend, UWORD Yend)
     LCD_1IN28_SendCommand(0x2B);
     LCD_1IN28_SendData_8Bit(0x00);
 	LCD_1IN28_SendData_8Bit(Ystart);
-	LCD_1IN28_SendData_8Bit((Xend-1)>>8);
+	LCD_1IN28_SendData_8Bit((Yend-1)>>8);
     LCD_1IN28_SendData_8Bit(Yend-1);
 
     LCD_1IN28_SendCommand(0X2C);

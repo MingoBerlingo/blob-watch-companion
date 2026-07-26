@@ -13,7 +13,7 @@ namespace blob_native
     constexpr int SCREEN_H = 240;
     constexpr float CENTER_X = SCREEN_W / 2.0f;
     constexpr float CENTER_Y = SCREEN_H / 2.0f;
-    constexpr float BLOB_RADIUS = 22.0f;
+    constexpr float BLOB_RADIUS = 25.0f;
     constexpr int POINTS = 48;
 
     // Blob contour wave amplitudes (main body curvature tuning).
@@ -22,12 +22,15 @@ namespace blob_native
     constexpr float BLOB_WAVE_AMP_3 = 1.5f;
 
     // Color palette (RGB565).
-    constexpr uint16_t BLOB_COLOR = CYAN;
+    constexpr uint16_t BLOB_COLOR = 0x0008;
     constexpr uint16_t OUTLINE_COLOR = BLUE;
     constexpr uint16_t BG_COLOR = BLACK;
     constexpr uint16_t GUIDE_COLOR = GRAY;
-    constexpr uint16_t EYE_COLOR = WHITE;
-    constexpr uint16_t MOUTH_COLOR = WHITE;
+    constexpr uint16_t EYE_COLOR = CYAN;
+    constexpr uint16_t MOUTH_COLOR = CYAN;
+
+    // Feature toggle: fill blob interior in addition to outline/glow.
+    constexpr bool BLOB_FILL_ENABLED = false;
 
     // Glow styling.
     constexpr int GLOW_LAYER_COUNT = 3;

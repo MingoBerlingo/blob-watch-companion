@@ -9,6 +9,22 @@
 namespace blob_native
 {
 
+    static int insertion_sort_int(int *values, int count)
+    {
+        for (int i = 1; i < count; i++)
+        {
+            const int key = values[i];
+            int j = i - 1;
+            while (j >= 0 && values[j] > key)
+            {
+                values[j + 1] = values[j];
+                j--;
+            }
+            values[j + 1] = key;
+        }
+        return count;
+    }
+
     void compute_blob(float cx, float cy, float vx, float vy, int16_t *px, int16_t *py)
     {
         const float speed = sqrtf(vx * vx + vy * vy);
@@ -61,6 +77,78 @@ namespace blob_native
         {
             const int next = (i + 1) % POINTS;
             Paint_DrawLine(px[i], py[i], px[next], py[next], color, DOT_PIXEL_1X1, LINE_STYLE_SOLID);
+        }
+    }
+
+    void draw_blob_fill(const int16_t *px, const int16_t *py, uint16_t color)
+    {
+        int16_t min_x = SCREEN_W - 1;
+        int16_t min_y = SCREEN_H - 1;
+        int16_t max_x = 0;
+        int16_t max_y = 0;
+        update_bounds(px, py, &min_x, &min_y, &max_x, &max_y);
+
+        min_x = clamp_i16(min_x, 0, SCREEN_W - 1);
+        max_x = clamp_i16(max_x, 0, SCREEN_W - 1);
+        min_y = clamp_i16(min_y, 0, SCREEN_H - 1);
+        max_y = clamp_i16(max_y, 0, SCREEN_H - 1);
+
+        int x_intersections[POINTS];
+
+        for (int y = min_y; y <= max_y; y++)
+        {
+            int count = 0;
+            for (int i = 0; i < POINTS; i++)
+            {
+                const int next = (i + 1) % POINTS;
+                const int x1 = px[i];
+                const int y1 = py[i];
+                const int x2 = px[next];
+                const int y2 = py[next];
+
+                if (y1 == y2)
+                {
+                    continue;
+                }
+
+                const int y_min = (y1 < y2) ? y1 : y2;
+                const int y_max = (y1 > y2) ? y1 : y2;
+                if (y < y_min || y >= y_max)
+                {
+                    continue;
+                }
+
+                const int dx = x2 - x1;
+                const int dy = y2 - y1;
+                const int x = x1 + (dx * (y - y1)) / dy;
+                x_intersections[count++] = x;
+            }
+
+            if (count < 2)
+            {
+                continue;
+            }
+
+            insertion_sort_int(x_intersections, count);
+
+            for (int i = 0; i + 1 < count; i += 2)
+            {
+                int x_start = x_intersections[i];
+                int x_end = x_intersections[i + 1];
+                if (x_start > x_end)
+                {
+                    const int tmp = x_start;
+                    x_start = x_end;
+                    x_end = tmp;
+                }
+
+                x_start = clamp_i16(x_start, min_x, max_x);
+                x_end = clamp_i16(x_end, min_x, max_x);
+                if (x_start <= x_end)
+                {
+                    Paint_DrawLine(x_start, y, x_end, y, color, DOT_PIXEL_1X1, LINE_STYLE_SOLID);
+                }
+            }
         }
     }
 

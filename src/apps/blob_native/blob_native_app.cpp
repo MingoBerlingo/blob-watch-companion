@@ -108,6 +108,10 @@ void blob_native_app_loop()
         }
 
         draw_blob_glow(g_blob_state.blob_x, g_blob_state.blob_y, px_new, py_new, OUTLINE_COLOR);
+        if (BLOB_FILL_ENABLED)
+        {
+            draw_blob_fill(px_new, py_new, BLOB_COLOR);
+        }
         draw_blob_outline(px_new, py_new, OUTLINE_COLOR);
         draw_blob_eyes(g_blob_state.blob_x, g_blob_state.blob_y, face_dir_x, face_dir_y,
                        speed_now, g_blob_state.phase_t, EYE_COLOR);
@@ -147,12 +151,20 @@ void blob_native_app_loop()
         if (!g_blob_state.first_frame)
         {
             draw_blob_glow(prev_blob_x, prev_blob_y, g_blob_state.px_old, g_blob_state.py_old, BG_COLOR);
+            if (BLOB_FILL_ENABLED)
+            {
+                draw_blob_fill(g_blob_state.px_old, g_blob_state.py_old, BG_COLOR);
+            }
             draw_blob_outline(g_blob_state.px_old, g_blob_state.py_old, BG_COLOR);
             draw_blob_eyes(prev_blob_x, prev_blob_y, face_dir_x, face_dir_y, prev_speed, prev_face_phase, BG_COLOR);
             draw_blob_mouth(prev_blob_x, prev_blob_y, face_dir_x, face_dir_y, prev_speed, prev_face_phase, BG_COLOR);
         }
 
         draw_blob_glow(g_blob_state.blob_x, g_blob_state.blob_y, px_new, py_new, OUTLINE_COLOR);
+        if (BLOB_FILL_ENABLED)
+        {
+            draw_blob_fill(px_new, py_new, BLOB_COLOR);
+        }
         draw_blob_outline(px_new, py_new, OUTLINE_COLOR);
         draw_blob_eyes(g_blob_state.blob_x, g_blob_state.blob_y, face_dir_x, face_dir_y,
                        speed_now, g_blob_state.phase_t, EYE_COLOR);
