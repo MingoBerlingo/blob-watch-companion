@@ -25,6 +25,18 @@ namespace
   const int GLOW_LAYER_COUNT = 3;
   const float GLOW_LAYER_SCALE[GLOW_LAYER_COUNT] = {1.3f, 1.2f, 1.1f};
   const uint16_t GLOW_LAYER_COLOR[GLOW_LAYER_COUNT] = {0x0008, 0x082b, 0x106f};
+  const float MAX_BLOB_EXTENT = (BLOB_RADIUS + 16.0f) * GLOW_LAYER_SCALE[0];
+  const int DIRTY_MARGIN = 8;
+  const int BACKUP_SIDE = (int)(MAX_BLOB_EXTENT * 2.0f) + DIRTY_MARGIN * 2 + 4;
+  const int BACKUP_PIXELS = BACKUP_SIDE * BACKUP_SIDE;
+
+  struct Rect
+  {
+    int16_t x0;
+    int16_t y0;
+    int16_t x1;
+    int16_t y1;
+  };
 
   float blob_x = CENTER_X;
   float blob_y = CENTER_Y;
@@ -32,9 +44,17 @@ namespace
   float vel_y = 0.0f;
   float phase_t = 0.0f;
 
+  uint16_t *saved_region = NULL;
+  Rect saved_rect = {0, 0, -1, -1};
+  bool has_saved_region = false;
+  bool use_saved_region = false;
+
   int16_t px_old[POINTS];
   int16_t py_old[POINTS];
   bool first_frame = true;
+
+  void update_bounds(const int16_t *px, const int16_t *py, int16_t *min_x, int16_t *min_y, int16_t *max_x, int16_t *max_y);
+  void update_glow_bounds(float cx, float cy, const int16_t *px, const int16_t *py, int16_t *min_x, int16_t *min_y, int16_t *max_x, int16_t *max_y);
 
   int16_t clamp_i16(int16_t v, int16_t lo, int16_t hi)
   {
@@ -43,6 +63,63 @@ namespace
     if (v > hi)
       return hi;
     return v;
+  }
+
+  int rect_width(const Rect &rect)
+  {
+    return rect.x1 - rect.x0 + 1;
+  }
+
+  int rect_height(const Rect &rect)
+  {
+    return rect.y1 - rect.y0 + 1;
+  }
+
+  Rect rect_union(const Rect &a, const Rect &b)
+  {
+    Rect merged;
+    merged.x0 = (a.x0 < b.x0) ? a.x0 : b.x0;
+    merged.y0 = (a.y0 < b.y0) ? a.y0 : b.y0;
+    merged.x1 = (a.x1 > b.x1) ? a.x1 : b.x1;
+    merged.y1 = (a.y1 > b.y1) ? a.y1 : b.y1;
+    return merged;
+  }
+
+  Rect make_blob_rect(float cx, float cy, const int16_t *px, const int16_t *py)
+  {
+    Rect rect = {SCREEN_W - 1, SCREEN_H - 1, 0, 0};
+    update_bounds(px, py, &rect.x0, &rect.y0, &rect.x1, &rect.y1);
+    update_glow_bounds(cx, cy, px, py, &rect.x0, &rect.y0, &rect.x1, &rect.y1);
+
+    rect.x0 = clamp_i16(rect.x0 - DIRTY_MARGIN, 0, SCREEN_W - 1);
+    rect.y0 = clamp_i16(rect.y0 - DIRTY_MARGIN, 0, SCREEN_H - 1);
+    rect.x1 = clamp_i16(rect.x1 + DIRTY_MARGIN, 0, SCREEN_W - 1);
+    rect.y1 = clamp_i16(rect.y1 + DIRTY_MARGIN, 0, SCREEN_H - 1);
+    return rect;
+  }
+
+  void save_region_pixels(const Rect &rect)
+  {
+    uint16_t *framebuffer = waveshare_native_framebuffer();
+    const int width = rect_width(rect);
+    const int height = rect_height(rect);
+
+    for (int row = 0; row < height; row++)
+    {
+      memcpy(&saved_region[row * width], &framebuffer[(rect.y0 + row) * SCREEN_W + rect.x0], width * sizeof(uint16_t));
+    }
+  }
+
+  void restore_region_pixels(const Rect &rect)
+  {
+    uint16_t *framebuffer = waveshare_native_framebuffer();
+    const int width = rect_width(rect);
+    const int height = rect_height(rect);
+
+    for (int row = 0; row < height; row++)
+    {
+      memcpy(&framebuffer[(rect.y0 + row) * SCREEN_W + rect.x0], &saved_region[row * width], width * sizeof(uint16_t));
+    }
   }
 
   void draw_hline(int16_t x0, int16_t x1, int16_t y, uint16_t color)
@@ -237,6 +314,16 @@ void blob_native_app_setup()
   waveshare_native_clear(BG_COLOR);
   waveshare_native_present_full();
 
+  saved_region = (uint16_t *)malloc(BACKUP_PIXELS * sizeof(uint16_t));
+  if (saved_region != NULL)
+  {
+    use_saved_region = true;
+  }
+  else
+  {
+    Serial.println("Blob backup buffer alloc failed; using geometry erase fallback");
+  }
+
   for (int i = 0; i < POINTS; i++)
   {
     px_old[i] = (int16_t)CENTER_X;
@@ -272,36 +359,63 @@ void blob_native_app_loop()
   int16_t py_new[POINTS];
   compute_blob(blob_x, blob_y, vel_x, vel_y, px_new, py_new);
 
+  const Rect current_rect = make_blob_rect(blob_x, blob_y, px_new, py_new);
+
   int16_t min_x = SCREEN_W - 1;
   int16_t min_y = SCREEN_H - 1;
   int16_t max_x = 0;
   int16_t max_y = 0;
-  update_bounds(px_new, py_new, &min_x, &min_y, &max_x, &max_y);
 
-  update_glow_bounds(blob_x, blob_y, px_new, py_new, &min_x, &min_y, &max_x, &max_y);
-
-  if (!first_frame)
+  if (use_saved_region)
   {
-    update_bounds(px_old, py_old, &min_x, &min_y, &max_x, &max_y);
-    update_glow_bounds(prev_blob_x, prev_blob_y, px_old, py_old, &min_x, &min_y, &max_x, &max_y);
+    if (has_saved_region)
+    {
+      restore_region_pixels(saved_rect);
+    }
+
+    save_region_pixels(current_rect);
+
+    Rect present_rect = current_rect;
+    if (has_saved_region)
+    {
+      present_rect = rect_union(saved_rect, current_rect);
+    }
+
+    draw_blob_glow(blob_x, blob_y, px_new, py_new, OUTLINE_COLOR);
+    draw_blob_outline(px_new, py_new, OUTLINE_COLOR);
+
+    waveshare_native_present_window(present_rect.x0, present_rect.y0, present_rect.x1, present_rect.y1);
+
+    saved_rect = current_rect;
+    has_saved_region = true;
   }
-
-  const int16_t margin = 8;
-  min_x = clamp_i16(min_x - margin, 0, SCREEN_W - 1);
-  min_y = clamp_i16(min_y - margin, 0, SCREEN_H - 1);
-  max_x = clamp_i16(max_x + margin, 0, SCREEN_W - 1);
-  max_y = clamp_i16(max_y + margin, 0, SCREEN_H - 1);
-
-  if (!first_frame)
+  else
   {
-    draw_blob_glow(prev_blob_x, prev_blob_y, px_old, py_old, BG_COLOR);
-    draw_blob_outline(px_old, py_old, BG_COLOR);
+    update_bounds(px_new, py_new, &min_x, &min_y, &max_x, &max_y);
+    update_glow_bounds(blob_x, blob_y, px_new, py_new, &min_x, &min_y, &max_x, &max_y);
+
+    if (!first_frame)
+    {
+      update_bounds(px_old, py_old, &min_x, &min_y, &max_x, &max_y);
+      update_glow_bounds(prev_blob_x, prev_blob_y, px_old, py_old, &min_x, &min_y, &max_x, &max_y);
+    }
+
+    min_x = clamp_i16(min_x - DIRTY_MARGIN, 0, SCREEN_W - 1);
+    min_y = clamp_i16(min_y - DIRTY_MARGIN, 0, SCREEN_H - 1);
+    max_x = clamp_i16(max_x + DIRTY_MARGIN, 0, SCREEN_W - 1);
+    max_y = clamp_i16(max_y + DIRTY_MARGIN, 0, SCREEN_H - 1);
+
+    if (!first_frame)
+    {
+      draw_blob_glow(prev_blob_x, prev_blob_y, px_old, py_old, BG_COLOR);
+      draw_blob_outline(px_old, py_old, BG_COLOR);
+    }
+
+    draw_blob_glow(blob_x, blob_y, px_new, py_new, OUTLINE_COLOR);
+    draw_blob_outline(px_new, py_new, OUTLINE_COLOR);
+
+    waveshare_native_present_window(min_x, min_y, max_x, max_y);
   }
-
-  draw_blob_glow(blob_x, blob_y, px_new, py_new, OUTLINE_COLOR);
-  draw_blob_outline(px_new, py_new, OUTLINE_COLOR);
-
-  waveshare_native_present_window(min_x, min_y, max_x, max_y);
 
   memcpy(px_old, px_new, sizeof(px_new));
   memcpy(py_old, py_new, sizeof(py_new));
