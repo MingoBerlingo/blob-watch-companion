@@ -11,5 +11,6 @@ void waveshare_native_present_window(int16_t x0, int16_t y0, int16_t x1, int16_t
 void waveshare_native_present_set_min_frame_ms(uint16_t min_frame_ms);
 bool waveshare_native_is_double_buffer_active();
 bool waveshare_native_read_tilt(float *tilt_x, float *tilt_y);
+bool waveshare_native_poll_click(bool *clicked);
 
 #endif

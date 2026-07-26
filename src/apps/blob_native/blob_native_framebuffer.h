@@ -11,6 +11,7 @@ namespace blob_native
     Rect rect_union(const Rect &a, const Rect &b);
 
     Rect make_blob_rect(float cx, float cy, float eye_x, float eye_y, float motion_speed, float face_phase,
+                        EyesAnimState eyes_state, MouthAnimState mouth_state,
                         const int16_t *px, const int16_t *py);
 
     void save_region_pixels(const Rect &rect);

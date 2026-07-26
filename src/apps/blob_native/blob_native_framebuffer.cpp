@@ -30,13 +30,16 @@ namespace blob_native
     }
 
     Rect make_blob_rect(float cx, float cy, float eye_x, float eye_y, float motion_speed, float face_phase,
+                        EyesAnimState eyes_state, MouthAnimState mouth_state,
                         const int16_t *px, const int16_t *py)
     {
         Rect rect = {SCREEN_W - 1, SCREEN_H - 1, 0, 0};
         update_bounds(px, py, &rect.x0, &rect.y0, &rect.x1, &rect.y1);
         update_glow_bounds(cx, cy, px, py, &rect.x0, &rect.y0, &rect.x1, &rect.y1);
-        update_eyes_bounds(cx, cy, eye_x, eye_y, motion_speed, face_phase, &rect.x0, &rect.y0, &rect.x1, &rect.y1);
-        update_mouth_bounds(cx, cy, eye_x, eye_y, motion_speed, face_phase, &rect.x0, &rect.y0, &rect.x1, &rect.y1);
+        update_eyes_bounds(cx, cy, eye_x, eye_y, motion_speed, face_phase, eyes_state,
+                           &rect.x0, &rect.y0, &rect.x1, &rect.y1);
+        update_mouth_bounds(cx, cy, eye_x, eye_y, motion_speed, face_phase, mouth_state,
+                            &rect.x0, &rect.y0, &rect.x1, &rect.y1);
 
         rect.x0 = clamp_i16(rect.x0 - DIRTY_MARGIN, 0, SCREEN_W - 1);
         rect.y0 = clamp_i16(rect.y0 - DIRTY_MARGIN, 0, SCREEN_H - 1);

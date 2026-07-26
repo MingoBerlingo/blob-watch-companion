@@ -3,7 +3,7 @@
 #include <Arduino.h>
 #include <math.h>
 
-#include "GUI_Paint.h"
+#include "apps/blob_native/blob_native_draw.h"
 #include "apps/blob_native/blob_native_state.h"
 
 namespace blob_native
@@ -76,7 +76,7 @@ namespace blob_native
         for (int i = 0; i < POINTS; i++)
         {
             const int next = (i + 1) % POINTS;
-            Paint_DrawLine(px[i], py[i], px[next], py[next], color, DOT_PIXEL_1X1, LINE_STYLE_SOLID);
+            draw_line(px[i], py[i], px[next], py[next], color);
         }
     }
 
@@ -146,7 +146,7 @@ namespace blob_native
                 x_end = clamp_i16(x_end, min_x, max_x);
                 if (x_start <= x_end)
                 {
-                    Paint_DrawLine(x_start, y, x_end, y, color, DOT_PIXEL_1X1, LINE_STYLE_SOLID);
+                    draw_line(x_start, y, x_end, y, color);
                 }
             }
         }
@@ -165,7 +165,7 @@ namespace blob_native
             {
                 const int next = (i + 1) % POINTS;
                 const uint16_t layer_color = (base_color == BG_COLOR) ? BG_COLOR : GLOW_LAYER_COLOR[layer];
-                Paint_DrawLine(glow_px[i], glow_py[i], glow_px[next], glow_py[next], layer_color, DOT_PIXEL_1X1, LINE_STYLE_SOLID);
+                draw_line(glow_px[i], glow_py[i], glow_px[next], glow_py[next], layer_color);
             }
         }
     }

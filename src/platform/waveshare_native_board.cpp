@@ -8,12 +8,24 @@
 #include "LCD_1in28.h"
 #include "QMI8658.h"
 
+#ifndef WAVESHARE_NATIVE_ENABLE_TOUCH
+#define WAVESHARE_NATIVE_ENABLE_TOUCH 0
+#endif
+
+#if WAVESHARE_NATIVE_ENABLE_TOUCH
+#include "CST816S.h"
+#endif
+
 #ifndef WAVESHARE_NATIVE_ENABLE_DOUBLE_BUFFER
-#define WAVESHARE_NATIVE_ENABLE_DOUBLE_BUFFER 1
+#define WAVESHARE_NATIVE_ENABLE_DOUBLE_BUFFER 0
 #endif
 
 #ifndef WAVESHARE_NATIVE_MIN_FRAME_MS
 #define WAVESHARE_NATIVE_MIN_FRAME_MS 0
+#endif
+
+#ifndef WAVESHARE_NATIVE_DRIVER_COLOR_TEST
+#define WAVESHARE_NATIVE_DRIVER_COLOR_TEST 0
 #endif
 
 static UWORD *s_framebuffer_a = NULL;
@@ -21,6 +33,11 @@ static UWORD *s_framebuffer_b = NULL;
 static UWORD *s_drawbuffer = NULL;
 static UWORD *s_frontbuffer = NULL;
 static bool s_double_buffer_active = false;
+#if WAVESHARE_NATIVE_ENABLE_TOUCH
+static bool s_touch_ready = false;
+static uint8_t s_touch_init_attempts = 0;
+static uint32_t s_touch_last_init_ms = 0;
+#endif
 static uint16_t s_min_frame_ms = WAVESHARE_NATIVE_MIN_FRAME_MS;
 static uint32_t s_last_present_ms = 0;
 
@@ -99,6 +116,22 @@ bool waveshare_native_begin()
   Paint_Clear(BLACK);
   LCD_1IN28_Display(s_drawbuffer);
 
+#if WAVESHARE_NATIVE_DRIVER_COLOR_TEST
+  // Lowest-level display diagnostic: bypass Paint/window logic and write full
+  // solid colors through the LCD driver forever.
+  while (true)
+  {
+    LCD_1IN28_Clear(WHITE);
+    DEV_Delay_ms(250);
+    LCD_1IN28_Clear(BLUE);
+    DEV_Delay_ms(250);
+    LCD_1IN28_Clear(GREEN);
+    DEV_Delay_ms(250);
+    LCD_1IN28_Clear(RED);
+    DEV_Delay_ms(250);
+  }
+#endif
+
   if (s_double_buffer_active)
   {
     s_frontbuffer = s_drawbuffer;
@@ -110,6 +143,13 @@ bool waveshare_native_begin()
   s_last_present_ms = millis();
 
   QMI8658_init();
+#if WAVESHARE_NATIVE_ENABLE_TOUCH
+  // Touch is initialized lazily in poll_click(). This avoids startup regressions
+  // on boards where gesture mode is flaky or touch wiring differs.
+  s_touch_ready = false;
+  s_touch_init_attempts = 0;
+  s_touch_last_init_ms = 0;
+#endif
   return true;
 }
 
@@ -172,4 +212,41 @@ bool waveshare_native_read_tilt(float *tilt_x, float *tilt_y)
   *tilt_x = constrain(acc[0] / 1000.0f, -1.0f, 1.0f);
   *tilt_y = constrain(acc[1] / 1000.0f, -1.0f, 1.0f);
   return true;
+}
+
+bool waveshare_native_poll_click(bool *clicked)
+{
+  if (clicked == NULL)
+  {
+    return false;
+  }
+
+  *clicked = false;
+#if !WAVESHARE_NATIVE_ENABLE_TOUCH
+  return true;
+#else
+  if (!s_touch_ready)
+  {
+    const uint32_t now = millis();
+    if (s_touch_init_attempts < 3 && (s_touch_last_init_ms == 0 || (now - s_touch_last_init_ms) > 500))
+    {
+      s_touch_last_init_ms = now;
+      s_touch_init_attempts++;
+      s_touch_ready = CST816S_init(CST816S_Gesture_Mode) ? true : false;
+    }
+
+    if (!s_touch_ready)
+    {
+      return false;
+    }
+  }
+
+  const uint8_t gesture = CST816S_Get_Gesture();
+  if (gesture == CST816S_Gesture_Click || gesture == CST816S_Gesture_Double_Click)
+  {
+    *clicked = true;
+  }
+
+  return true;
+#endif
 }

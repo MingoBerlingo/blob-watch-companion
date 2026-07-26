@@ -32,6 +32,22 @@ namespace blob_native
     // Feature toggle: fill blob interior in addition to outline/glow.
     constexpr bool BLOB_FILL_ENABLED = false;
 
+    // Keep partial presents enabled for smoother animation in the stable raw renderer.
+    constexpr bool BLOB_FORCE_FULL_PRESENT = false;
+
+    // Stable runtime path.
+    constexpr bool BLOB_RAW_BLOB_MODE = true;
+    constexpr bool BLOB_RAW_BLOB_USE_IMU = true;
+
+    // Lock to the known-stable profile while full-mode branch is under investigation.
+    constexpr bool BLOB_STABLE_PROFILE_LOCKED = true;
+
+    // Lightweight on-screen diagnostics overlay.
+    constexpr bool BLOB_TELEMETRY_OVERLAY_ENABLED = true;
+    // Keep overlay away from rounded screen corners to avoid clipping.
+    constexpr int16_t BLOB_TELEMETRY_X = 52;
+    constexpr int16_t BLOB_TELEMETRY_Y = 34;
+
     // Glow styling.
     constexpr int GLOW_LAYER_COUNT = 3;
     constexpr float GLOW_LAYER_SCALE[GLOW_LAYER_COUNT] = {1.3f, 1.2f, 1.1f};
@@ -56,6 +72,18 @@ namespace blob_native
     constexpr float FACE_IDLE_BLINK_RATE = 0.85f;
     constexpr float FACE_IDLE_BLINK_THRESHOLD = 0.965f;
 
+    // Face state-machine tuning.
+    constexpr uint16_t FACE_UPDATE_DT_MS = 16;
+    constexpr uint16_t FACE_BLINK_CLOSED_MS = 90;
+    constexpr uint16_t FACE_BLINK_OPEN_MS = 80;
+    constexpr uint16_t FACE_DOUBLE_BLINK_GAP_MS = 120;
+    constexpr uint16_t FACE_SHAKE_X_MS = 650;
+    constexpr uint16_t FACE_MOUTH_O_MS = 420;
+    constexpr uint16_t FACE_BLINK_INTERVAL_MIN_MS = 1300;
+    constexpr uint16_t FACE_BLINK_INTERVAL_MAX_MS = 3200;
+    constexpr uint8_t FACE_DOUBLE_BLINK_CHANCE_PERCENT = 25;
+    constexpr float FACE_SHAKE_SPEED_THRESHOLD = 2.2f;
+
     // Dirty-rect and backup sizing.
     constexpr float MAX_BLOB_EXTENT = (BLOB_RADIUS + 16.0f) * GLOW_LAYER_SCALE[0];
     constexpr int DIRTY_MARGIN = 8;
@@ -70,6 +98,31 @@ namespace blob_native
         int16_t y1;
     };
 
+    enum class EyesAnimState : uint8_t
+    {
+        Idle = 0,
+        BlinkClosed,
+        BlinkOpen,
+        DoubleBlinkGap,
+        ShakeX,
+    };
+
+    enum class MouthAnimState : uint8_t
+    {
+        Neutral = 0,
+        OpenO,
+    };
+
+    struct FaceAnimState
+    {
+        EyesAnimState eyes_state;
+        MouthAnimState mouth_state;
+        uint16_t eyes_timer_ms;
+        uint16_t mouth_timer_ms;
+        uint16_t next_blink_ms;
+        bool double_blink_pending;
+    };
+
     // Runtime state updated once per frame.
     struct BlobState
     {
@@ -81,6 +134,7 @@ namespace blob_native
         float eye_dir_y;
         float face_phase_prev;
         float phase_t;
+        FaceAnimState face_anim;
 
         uint16_t *saved_region;
         Rect saved_rect;
