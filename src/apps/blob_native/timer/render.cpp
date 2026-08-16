@@ -10,6 +10,10 @@ namespace blob_native
 
     namespace timer_internal
     {
+        TimerView g_prev_view = TimerView::MainScreen;
+        bool g_prev_controls_visible = false;
+        int32_t g_prev_display_seconds = -1;
+
         void ensure_ring_points()
         {
             if (g_ring_points_ready)
@@ -181,6 +185,119 @@ namespace blob_native
         *min_y = 18;
         *max_x = 188;
         *max_y = 196;
+    }
+
+    void timer_renderer_reset()
+    {
+        timer_internal::g_prev_view = TimerView::MainScreen;
+        timer_internal::g_prev_controls_visible = false;
+        timer_internal::g_prev_display_seconds = -1;
+    }
+
+    void timer_renderer_draw_frame()
+    {
+        const TimerView current_view = timer_view();
+        if (current_view == TimerView::MainScreen)
+        {
+            return;
+        }
+
+        const bool controls_visible = timer_run_controls_visible();
+        const int32_t display_seconds = timer_display_seconds_value();
+        const bool view_changed = (timer_internal::g_prev_view != current_view);
+
+        if (view_changed)
+        {
+            waveshare_native_clear(BG_COLOR);
+
+            if (current_view == TimerView::TimerSetup)
+            {
+                timer_draw_setup_overlay();
+            }
+            else
+            {
+                timer_draw_run_ring();
+                if (controls_visible)
+                {
+                    timer_draw_run_controls_overlay();
+                }
+                else
+                {
+                    timer_draw_run_time_overlay();
+                }
+            }
+
+            waveshare_native_present_full();
+        }
+        else if (current_view == TimerView::TimerSetup)
+        {
+            waveshare_native_clear(BG_COLOR);
+            timer_draw_setup_overlay();
+            waveshare_native_present_full();
+        }
+        else
+        {
+            int16_t cx0 = 0;
+            int16_t cy0 = 0;
+            int16_t cx1 = 0;
+            int16_t cy1 = 0;
+            timer_run_center_bounds(&cx0, &cy0, &cx1, &cy1);
+
+            if (display_seconds != timer_internal::g_prev_display_seconds)
+            {
+                timer_draw_run_ring();
+
+                const uint16_t black_swapped = (uint16_t)((BLACK << 8) | (BLACK >> 8));
+                uint16_t *fb = waveshare_native_framebuffer();
+                for (int y = cy0; y <= cy1; y++)
+                {
+                    uint16_t *row = &fb[y * SCREEN_W + cx0];
+                    for (int x = cx0; x <= cx1; x++)
+                    {
+                        *row++ = black_swapped;
+                    }
+                }
+
+                if (controls_visible)
+                {
+                    timer_draw_run_controls_overlay();
+                }
+                else
+                {
+                    timer_draw_run_time_overlay();
+                }
+
+                waveshare_native_present_full();
+            }
+            else if (controls_visible != timer_internal::g_prev_controls_visible)
+            {
+                const uint16_t black_swapped = (uint16_t)((BLACK << 8) | (BLACK >> 8));
+                uint16_t *fb = waveshare_native_framebuffer();
+                for (int y = cy0; y <= cy1; y++)
+                {
+                    uint16_t *row = &fb[y * SCREEN_W + cx0];
+                    for (int x = cx0; x <= cx1; x++)
+                    {
+                        *row++ = black_swapped;
+                    }
+                }
+
+                if (controls_visible)
+                {
+                    timer_draw_run_controls_overlay();
+                }
+                else
+                {
+                    timer_draw_run_time_overlay();
+                }
+
+                waveshare_native_present_window(cx0, cy0, cx1, cy1);
+            }
+        }
+
+        timer_internal::g_prev_view = current_view;
+        timer_internal::g_prev_controls_visible = controls_visible;
+        timer_internal::g_prev_display_seconds = display_seconds;
     }
 
 } // namespace blob_native

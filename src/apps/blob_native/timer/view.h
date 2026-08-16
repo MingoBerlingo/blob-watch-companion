@@ -19,6 +19,7 @@ namespace blob_native
     void timer_update_remaining(uint32_t now_ms);
 
     TimerView timer_view();
+    bool timer_screen_active();
     bool timer_run_controls_visible();
     int32_t timer_display_seconds_value();
 
@@ -27,6 +28,9 @@ namespace blob_native
     void timer_draw_run_time_overlay();
     void timer_draw_run_controls_overlay();
     void timer_run_center_bounds(int16_t *min_x, int16_t *min_y, int16_t *max_x, int16_t *max_y);
+
+    void timer_renderer_reset();
+    void timer_renderer_draw_frame();
 
 } // namespace blob_native
 

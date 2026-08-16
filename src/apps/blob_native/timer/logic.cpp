@@ -273,6 +273,11 @@ namespace blob_native
         return timer_internal::g_timer_ui.view;
     }
 
+    bool timer_screen_active()
+    {
+        return timer_internal::g_timer_ui.view != TimerView::MainScreen;
+    }
+
     bool timer_run_controls_visible()
     {
         return timer_internal::g_timer_ui.controls_visible;
