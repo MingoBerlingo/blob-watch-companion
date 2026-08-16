@@ -4,29 +4,41 @@ This folder contains the simplified, stable blob renderer.
 
 ## File Map
 
-- `blob_native_app.cpp`
-  - App setup + frame loop
-  - IMU-driven motion update (optional)
-  - Dirty-window clear/draw/present
+- `app/app.cpp` / `app/app.h`
+  - App setup entrypoints
+  - Delegates frame work to screen logic
 
-- `blob_native_state.h` / `blob_native_state.cpp`
+- `screen_logic.cpp` / `screen_logic.h`
+  - Section switching between blob and timer
+  - Timer screen partial/full redraw policy
+
+- `shared_state.h` / `shared_state.cpp`
   - Shared constants and lightweight runtime state
 
-- `blob_native_blob.h` / `blob_native_blob.cpp`
+- `blob/view.h`, `blob/logic.cpp`, `blob/render.cpp`
+  - Blob screen frame preparation and rendering
+
+- `blob/shape.h` / `blob/shape.cpp`
   - Blob contour generation
   - Glow, fill, outline drawing
   - Blob bounds helpers
 
-- `blob_native_face.h` / `blob_native_face.cpp`
+- `blob/face.h` / `blob/face.cpp`
   - Eyes and mouth drawing
   - Face bounds helpers
 
-- `blob_native_draw.h` / `blob_native_draw.cpp`
-  - Direct raster primitives on framebuffer
-
-- `blob_native_overlay.h` / `blob_native_overlay.cpp`
+- `blob/overlay.h` / `blob/overlay.cpp`
   - Optional performance overlay (FPS + dirty window size)
   - Drawn only on overlay refresh ticks
+
+- `timer/view.h`, `timer/logic.cpp`, `timer/render.cpp`, `timer/internal.h`
+  - Timer screen state, gestures, and rendering
+
+- `ui/draw.h` / `ui/draw.cpp`
+  - Direct raster primitives on framebuffer
+
+- `ui/button.h` / `ui/button.cpp`
+  - Reusable rectangular and circular button shells + hit-testing
 
 ## Render Path
 

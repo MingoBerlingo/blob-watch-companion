@@ -1,6 +1,6 @@
-#include "apps/blob_native/blob_native_overlay.h"
+#include "apps/blob_native/blob/overlay.h"
 
-#include "apps/blob_native/blob_native_state.h"
+#include "apps/blob_native/shared_state.h"
 
 namespace blob_native
 {

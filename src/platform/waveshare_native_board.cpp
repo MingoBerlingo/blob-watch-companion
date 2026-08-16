@@ -9,7 +9,7 @@
 #include "QMI8658.h"
 
 #ifndef WAVESHARE_NATIVE_ENABLE_TOUCH
-#define WAVESHARE_NATIVE_ENABLE_TOUCH 0
+#define WAVESHARE_NATIVE_ENABLE_TOUCH 1
 #endif
 
 #if WAVESHARE_NATIVE_ENABLE_TOUCH
@@ -40,6 +40,27 @@ static uint32_t s_touch_last_init_ms = 0;
 #endif
 static uint16_t s_min_frame_ms = WAVESHARE_NATIVE_MIN_FRAME_MS;
 static uint32_t s_last_present_ms = 0;
+
+#if WAVESHARE_NATIVE_ENABLE_TOUCH
+static WaveshareNativeTouchGesture map_touch_gesture(uint8_t gesture)
+{
+  if (gesture == CST816S_Gesture_Up)
+    return WaveshareNativeTouchGesture::Up;
+  if (gesture == CST816S_Gesture_Down)
+    return WaveshareNativeTouchGesture::Down;
+  if (gesture == CST816S_Gesture_Left)
+    return WaveshareNativeTouchGesture::Left;
+  if (gesture == CST816S_Gesture_Right)
+    return WaveshareNativeTouchGesture::Right;
+  if (gesture == CST816S_Gesture_Click)
+    return WaveshareNativeTouchGesture::Click;
+  if (gesture == CST816S_Gesture_Double_Click)
+    return WaveshareNativeTouchGesture::DoubleClick;
+  if (gesture == CST816S_Gesture_Long_Press)
+    return WaveshareNativeTouchGesture::LongPress;
+  return WaveshareNativeTouchGesture::None;
+}
+#endif
 
 static void pace_present_if_needed()
 {
@@ -214,6 +235,47 @@ bool waveshare_native_read_tilt(float *tilt_x, float *tilt_y)
   return true;
 }
 
+bool waveshare_native_poll_touch(WaveshareNativeTouchSample *sample)
+{
+  if (sample == NULL)
+  {
+    return false;
+  }
+
+  sample->touching = false;
+  sample->x = 0;
+  sample->y = 0;
+  sample->gesture = WaveshareNativeTouchGesture::None;
+
+#if !WAVESHARE_NATIVE_ENABLE_TOUCH
+  return true;
+#else
+  if (!s_touch_ready)
+  {
+    const uint32_t now = millis();
+    if (s_touch_init_attempts < 3 && (s_touch_last_init_ms == 0 || (now - s_touch_last_init_ms) > 500))
+    {
+      s_touch_last_init_ms = now;
+      s_touch_init_attempts++;
+      s_touch_ready = CST816S_init(CST816S_ALL_Mode) ? true : false;
+    }
+
+    if (!s_touch_ready)
+    {
+      return false;
+    }
+  }
+
+  sample->gesture = map_touch_gesture(CST816S_Get_Gesture());
+  sample->touching = (CST816S_Get_FingerNum() > 0);
+  const CST816S point = CST816S_Get_Point();
+  sample->x = point.x_point;
+  sample->y = point.y_point;
+
+  return true;
+#endif
+}
+
 bool waveshare_native_poll_click(bool *clicked)
 {
   if (clicked == NULL)
@@ -225,24 +287,14 @@ bool waveshare_native_poll_click(bool *clicked)
 #if !WAVESHARE_NATIVE_ENABLE_TOUCH
   return true;
 #else
-  if (!s_touch_ready)
+  WaveshareNativeTouchSample sample = {false, 0, 0, WaveshareNativeTouchGesture::None};
+  if (!waveshare_native_poll_touch(&sample))
   {
-    const uint32_t now = millis();
-    if (s_touch_init_attempts < 3 && (s_touch_last_init_ms == 0 || (now - s_touch_last_init_ms) > 500))
-    {
-      s_touch_last_init_ms = now;
-      s_touch_init_attempts++;
-      s_touch_ready = CST816S_init(CST816S_Gesture_Mode) ? true : false;
-    }
-
-    if (!s_touch_ready)
-    {
-      return false;
-    }
+    return false;
   }
 
-  const uint8_t gesture = CST816S_Get_Gesture();
-  if (gesture == CST816S_Gesture_Click || gesture == CST816S_Gesture_Double_Click)
+  if (sample.gesture == WaveshareNativeTouchGesture::Click ||
+      sample.gesture == WaveshareNativeTouchGesture::DoubleClick)
   {
     *clicked = true;
   }
