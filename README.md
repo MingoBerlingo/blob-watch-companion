@@ -1,6 +1,13 @@
-# RP2040 Touch LCD Native Blob Demo
+# Blob Watch Companion
 
-This repository contains a PlatformIO project for the Waveshare RP2040-Touch-LCD-1.28 board, focused on native-driver rendering performance.
+This repository contains a PlatformIO project for Blob Watch Companion on the Waveshare RP2040-Touch-LCD-1.28 board, focused on native-driver rendering performance and UI experimentation.
+
+Official board documentation: https://www.waveshare.com/wiki/RP2040-Touch-LCD-1.28
+
+## What Is Blob Watch?
+
+Blob Watch is a playful on-device watchface concept centered on an animated blob character reacting to board movement and orientation.
+This project is the companion firmware implementation, built to run smoothly on the RP2040 touch LCD hardware.
 
 ## Root Layout
 
