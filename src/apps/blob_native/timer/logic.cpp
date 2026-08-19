@@ -171,14 +171,27 @@ namespace blob_native
                     const uint16_t tx = g_timer_ui.last_touch_x;
                     const uint16_t ty = g_timer_ui.last_touch_y;
 
-                    if (ui::button_contains(kPauseButton, tx, ty))
+                    if (ui::button_contains(kBackButton, tx, ty))
                     {
-                        g_timer_ui.running = false;
                         g_timer_ui.controls_visible = false;
                         return;
                     }
 
-                    if (ui::button_contains(kEraseButton, tx, ty))
+                    if (ui::button_contains(kActionButton, tx, ty))
+                    {
+                        if (g_timer_ui.running)
+                        {
+                            g_timer_ui.running = false;
+                        }
+                        else if (g_timer_ui.remaining_ms > 0)
+                        {
+                            g_timer_ui.end_ms = now_ms + g_timer_ui.remaining_ms;
+                            g_timer_ui.running = true;
+                        }
+                        return;
+                    }
+
+                    if (ui::button_contains(kCancelButton, tx, ty))
                     {
                         g_timer_ui.running = false;
                         g_timer_ui.remaining_ms = g_timer_ui.total_ms;

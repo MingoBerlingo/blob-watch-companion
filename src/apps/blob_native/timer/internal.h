@@ -19,9 +19,9 @@ namespace blob_native
         };
 
         constexpr int kTimerMinMinutes = 0;
-        constexpr int kTimerMaxMinutes = 180;
+        constexpr int kTimerMaxMinutes = 99;
         constexpr int kTimerMinSeconds = 0;
-        constexpr int kTimerMaxSeconds = 59;
+        constexpr int kTimerMaxSeconds = 99;
         constexpr int kTimerAdjustPxPerStep = 10;
 
         constexpr int kTimerRingOuterRadius = (SCREEN_W / 2) - 2;
@@ -37,8 +37,9 @@ namespace blob_native
         constexpr ui::RectButton kSecondsButton = {128, 58, 198, 146, BLACK, kUiBorderColor, false};
         constexpr ui::RectButton kStartButton = {50, 170, 190, 214, CYAN, CYAN, true};
 
-        constexpr ui::CircleButton kPauseButton = {SCREEN_W / 2, 78, 28, 0x52AA, 0x52AA, true};
-        constexpr ui::CircleButton kEraseButton = {SCREEN_W / 2, 158, 34, 0xF98C, 0xF98C, true};
+        constexpr ui::CircleButton kBackButton = {(SCREEN_W / 2) - 44, 78, 34, 0x31A6, 0x31A6, true};
+        constexpr ui::CircleButton kActionButton = {(SCREEN_W / 2) + 44, 78, 34, 0xCE79, 0xCE79, true};
+        constexpr ui::CircleButton kCancelButton = {SCREEN_W / 2, 158, 34, 0xF98C, 0xF98C, true};
 
         struct TimerUiState
         {
