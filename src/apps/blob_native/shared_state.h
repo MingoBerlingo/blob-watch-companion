@@ -43,7 +43,7 @@ namespace blob_native
     constexpr bool BLOB_STABLE_PROFILE_LOCKED = true;
 
     // Lightweight performance overlay (FPS + dirty window size).
-    constexpr bool BLOB_PERF_OVERLAY_ENABLED = true;
+    constexpr bool BLOB_PERF_OVERLAY_ENABLED = false;
     constexpr int16_t BLOB_PERF_OVERLAY_X = 52;
     constexpr int16_t BLOB_PERF_OVERLAY_Y = 34;
     constexpr uint16_t BLOB_PERF_OVERLAY_UPDATE_MS = 250;

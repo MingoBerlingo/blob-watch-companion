@@ -1,8 +1,8 @@
-#include "apps/blob_native/blob_native_draw.h"
+#include "apps/blob_native/ui/draw.h"
 
 #include <stdlib.h>
 
-#include "apps/blob_native/blob_native_state.h"
+#include "apps/blob_native/shared_state.h"
 #include "platform/waveshare_native_board.h"
 
 namespace blob_native

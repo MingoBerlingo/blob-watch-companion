@@ -1,10 +1,10 @@
-#include "apps/blob_native/blob_native_blob.h"
+#include "apps/blob_native/blob/shape.h"
 
 #include <Arduino.h>
 #include <math.h>
 
-#include "apps/blob_native/blob_native_draw.h"
-#include "apps/blob_native/blob_native_state.h"
+#include "apps/blob_native/shared_state.h"
+#include "apps/blob_native/ui/draw.h"
 
 namespace blob_native
 {

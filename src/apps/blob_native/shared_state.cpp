@@ -1,4 +1,4 @@
-#include "apps/blob_native/blob_native_state.h"
+#include "apps/blob_native/shared_state.h"
 
 namespace blob_native
 {
