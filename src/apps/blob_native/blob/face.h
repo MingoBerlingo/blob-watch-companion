@@ -3,22 +3,14 @@
 
 #include <stdint.h>
 
-#include "apps/blob_native/shared_state.h"
-
 namespace blob_native
 {
 
-    void draw_blob_eyes(float cx, float cy, float dir_x, float dir_y, float motion_speed, float face_phase,
-                        EyesAnimState eyes_state, uint16_t color);
-    void update_eyes_bounds(float cx, float cy, float dir_x, float dir_y, float motion_speed, float face_phase,
-                            EyesAnimState eyes_state,
-                            int16_t *min_x, int16_t *min_y, int16_t *max_x, int16_t *max_y);
-
-    void draw_blob_mouth(float cx, float cy, float dir_x, float dir_y, float motion_speed, float face_phase,
-                         MouthAnimState mouth_state, uint16_t color);
-    void update_mouth_bounds(float cx, float cy, float dir_x, float dir_y, float motion_speed, float face_phase,
-                             MouthAnimState mouth_state,
-                             int16_t *min_x, int16_t *min_y, int16_t *max_x, int16_t *max_y);
+    void compute_eye_positions(float cx, float cy, float dir_x, float dir_y, float motion_speed, float face_phase,
+                               int16_t *left_x, int16_t *left_y, int16_t *right_x, int16_t *right_y);
+    void compute_mouth_points(float cx, float cy, float dir_x, float dir_y, float motion_speed, float face_phase,
+                              int16_t *x0, int16_t *y0, int16_t *xm, int16_t *ym, int16_t *x1, int16_t *y1);
+    float compute_blink_amount(float motion_speed, float face_phase);
 
 } // namespace blob_native
 

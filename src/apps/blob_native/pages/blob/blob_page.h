@@ -1,13 +1,11 @@
 #ifndef BLOB_NATIVE_BLOB_PAGE_H
 #define BLOB_NATIVE_BLOB_PAGE_H
 
-#include <stdint.h>
-
 namespace blob_native
 {
-
-    void blob_page_reset();
-    void blob_page_loop(uint32_t frame_start_us);
+    void blob_page_init();
+    void blob_page_show();
+    void blob_page_hide();
 
 } // namespace blob_native
 

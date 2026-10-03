@@ -1,6 +1,6 @@
 # Blob Native App Architecture
 
-This folder contains the raw blob renderer plus an LVGL-based timer screen and a page manager that switches between the two.
+This folder contains LVGL-based blob and timer screens plus a page manager that switches between the two.
 
 ## File Map
 
@@ -14,40 +14,30 @@ This folder contains the raw blob renderer plus an LVGL-based timer screen and a
 - `pages/`
   - `page_manager.h` / `page_manager.cpp` - page registry + swipe Left/Right
     navigation between the blob and timer pages.
-  - `blob_page.h` / `blob_page.cpp` - wraps the raw blob render loop.
+  - `blob/blob_page.h` / `blob/blob_page.cpp` - blob LVGL screen (custom draw event + animation timer).
   - `timer/timer_page.h` / `timer_page.cpp` - LVGL screen (arc, labels, buttons).
 
-- `shared_state.h` / `shared_state.cpp`
-  - Shared constants and lightweight runtime state
+- `blob/`
+  - `shape.h` / `shape.cpp` - blob contour generation + glow scaling.
+  - `face.h` / `face.cpp` - eye/mouth positions and blink amount.
 
-- `blob/view.h`, `blob/logic.cpp`, `blob/render.cpp`
-  - Blob screen frame preparation and rendering
+- `timer/`
+  - `view.h` / `logic.cpp` / `internal.h` - timer state machine + accessors;
+    rendering is handled by the LVGL page.
 
-- `blob/shape.h` / `blob/shape.cpp`
-  - Blob contour generation
-  - Glow, fill, outline drawing
-  - Blob bounds helpers
-
-- `blob/face.h` / `blob/face.cpp`
-  - Eyes and mouth drawing
-  - Face bounds helpers
-
-- `blob/overlay.h` / `blob/overlay.cpp`
-  - Optional performance overlay (FPS + dirty window size)
-  - Drawn only on overlay refresh ticks
-
-- `timer/view.h`, `timer/logic.cpp`, `timer/internal.h`
-  - Timer state machine + accessors; rendering is handled by the LVGL page.
-
-- `ui/draw.h` / `ui/draw.cpp`
-  - Direct raster primitives used by the blob renderer.
+- `shared_state.h`
+  - Shared geometry/color constants.
 
 ## Render Path
 
-- Blob page: raw framebuffer rendering (unchanged), capped at ~60 fps.
-- Timer page: `page_manager_loop` drives `lv_timer_handler`; LVGL renders into
-  a partial buffer, `flush_cb` copies it into the native framebuffer
-  (byte-swapped RGB565) and pushes dirty windows over SPI.
+Both pages are LVGL screens. `page_manager_loop` drives `lv_timer_handler`;
+LVGL renders into a partial buffer, `flush_cb` copies it into the native
+framebuffer (byte-swapped RGB565) and pushes dirty windows over SPI.
+
+- Blob: a 33 ms LVGL timer advances the animation and invalidates a full-screen
+  object; its `LV_EVENT_DRAW_MAIN` handler draws glow/outline/face with LVGL
+  draw primitives (reusing the geometry in `blob/`).
+- Timer: LVGL widgets (`lv_arc`, `lv_label`, `lv_btn`) + event callbacks.
 
 ## Main Tuning Knobs
 
@@ -55,11 +45,8 @@ This folder contains the raw blob renderer plus an LVGL-based timer screen and a
 - Glow: `GLOW_LAYER_COUNT`, `GLOW_LAYER_SCALE[]`, `GLOW_LAYER_COLOR[]`
 - Face: `EYE_*`, `MOUTH_*`, `FACE_DIR_X`, `FACE_DIR_Y`
 - Idle animation: `FACE_IDLE_*`
-- Dirty update: `DIRTY_MARGIN`
 
 ## Notes
 
 - Colors are specified as the project's native RGB565 values and converted via
   `lv_rgb565()`; `LV_COLOR_16_SWAP 1` matches the panel's BGR + byte-swap order.
-- The blob screen remains raw for now and can be migrated to a custom LVGL draw
-  event in a future change.

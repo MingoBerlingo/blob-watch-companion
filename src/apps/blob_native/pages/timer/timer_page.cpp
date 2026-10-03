@@ -400,9 +400,6 @@ namespace blob_native
     void timer_page_show()
     {
         lv_scr_load(g_screen);
-        // The blob page draws raw into the framebuffer while this screen stays
-        // loaded, so force a full redraw to overwrite any stale pixels.
-        lv_obj_invalidate(g_screen);
         sync(true);
     }
 

@@ -18,8 +18,7 @@ void blob_native_app_setup()
         return;
     }
 
-    waveshare_native_clear(BG_COLOR);
-    waveshare_native_present_full();
+    waveshare_native_clear_display(BG_COLOR);
 
     lv_port_init();
     page_manager_init();

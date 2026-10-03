@@ -1,7 +1,6 @@
 #include "apps/blob_native/lv_port/lv_port.h"
 
 #include <Arduino.h>
-#include <string.h>
 
 #include "apps/blob_native/shared_state.h"
 #include "platform/waveshare_native_board.h"
@@ -20,24 +19,10 @@ namespace blob_native
 
         void flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p)
         {
-            uint16_t *fb = waveshare_native_framebuffer();
-            if (fb == nullptr)
-            {
-                lv_disp_flush_ready(drv);
-                return;
-            }
-
             // LV_COLOR_16_SWAP already stores the pixels in the panel's
-            // byte-swapped RGB565 order, so a straight row copy is correct.
-            const uint16_t w = (uint16_t)(area->x2 - area->x1 + 1);
-            for (int y = area->y1; y <= area->y2; y++)
-            {
-                memcpy(&fb[y * SCREEN_W + area->x1],
-                       &color_p[(y - area->y1) * w],
-                       (size_t)w * sizeof(uint16_t));
-            }
-
-            waveshare_native_present_window(area->x1, area->y1, area->x2, area->y2);
+            // byte-swapped RGB565 order, so LVGL's buffer can be written
+            // straight to the LCD over SPI (no intermediate framebuffer).
+            waveshare_native_flush_area(area->x1, area->y1, area->x2, area->y2, (const uint16_t *)color_p);
             lv_disp_flush_ready(drv);
         }
 
