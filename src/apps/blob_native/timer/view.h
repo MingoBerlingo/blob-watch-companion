@@ -13,30 +13,22 @@ namespace blob_native
         TimerRun,
     };
 
-    enum class TimerField : uint8_t
-    {
-        Minutes = 0,
-        Seconds,
-    };
-
     // Lifecycle
     void timer_update_remaining(uint32_t now_ms);
     void timer_enter();
     void timer_exit();
 
     // State transitions (driven by the LVGL timer page)
-    void timer_select_minutes();
-    void timer_select_seconds();
+    void timer_set_minutes(int minutes);
+    void timer_set_seconds(int seconds);
     void timer_start(uint32_t now_ms);
     void timer_hide_controls();
     void timer_toggle_controls();
     void timer_action(uint32_t now_ms);
     void timer_cancel();
-    void timer_apply_value_delta(int delta);
 
     // Accessors
     TimerView timer_view();
-    TimerField timer_active_field();
     bool timer_screen_active();
     bool timer_running();
     bool timer_run_controls_visible();

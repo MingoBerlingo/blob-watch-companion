@@ -9,7 +9,6 @@ namespace blob_native
     {
         TimerUiState g_timer_ui = {
             TimerView::MainScreen,
-            TimerField::Minutes,
             5,
             0,
             5u * 60u * 1000u,
@@ -33,19 +32,6 @@ namespace blob_native
             const uint32_t total_sec = (uint32_t)g_timer_ui.minutes_set * 60u + (uint32_t)g_timer_ui.seconds_set;
             g_timer_ui.total_ms = total_sec * 1000u;
             g_timer_ui.remaining_ms = g_timer_ui.total_ms;
-        }
-
-        void timer_apply_value_delta(int delta)
-        {
-            if (g_timer_ui.active_field == TimerField::Minutes)
-            {
-                g_timer_ui.minutes_set = clamp_i32(g_timer_ui.minutes_set + delta, kTimerMinMinutes, kTimerMaxMinutes);
-            }
-            else
-            {
-                g_timer_ui.seconds_set = clamp_i32(g_timer_ui.seconds_set + delta, kTimerMinSeconds, kTimerMaxSeconds);
-            }
-            timer_sync_total_ms();
         }
 
         void timer_start(uint32_t now_ms)
@@ -125,14 +111,18 @@ namespace blob_native
         g_timer_ui.controls_visible = false;
     }
 
-    void timer_select_minutes()
+    void timer_set_minutes(int minutes)
     {
-        timer_internal::g_timer_ui.active_field = TimerField::Minutes;
+        using namespace timer_internal;
+        g_timer_ui.minutes_set = clamp_i32(minutes, kTimerMinMinutes, kTimerMaxMinutes);
+        timer_sync_total_ms();
     }
 
-    void timer_select_seconds()
+    void timer_set_seconds(int seconds)
     {
-        timer_internal::g_timer_ui.active_field = TimerField::Seconds;
+        using namespace timer_internal;
+        g_timer_ui.seconds_set = clamp_i32(seconds, kTimerMinSeconds, kTimerMaxSeconds);
+        timer_sync_total_ms();
     }
 
     void timer_start(uint32_t now_ms)
@@ -173,19 +163,9 @@ namespace blob_native
         g_timer_ui.view = TimerView::TimerSetup;
     }
 
-    void timer_apply_value_delta(int delta)
-    {
-        timer_internal::timer_apply_value_delta(delta);
-    }
-
     TimerView timer_view()
     {
         return timer_internal::g_timer_ui.view;
-    }
-
-    TimerField timer_active_field()
-    {
-        return timer_internal::g_timer_ui.active_field;
     }
 
     bool timer_screen_active()
