@@ -21,11 +21,8 @@ namespace blob_native
     constexpr float BLOB_WAVE_AMP_2 = 1.8f;
     constexpr float BLOB_WAVE_AMP_3 = 1.5f;
 
-    // Color palette (RGB565).
-    constexpr uint16_t OUTLINE_COLOR = BLUE;
+    // Background color (RGB565). Accents come from the LVGL theme.
     constexpr uint16_t BG_COLOR = BLACK;
-    constexpr uint16_t EYE_COLOR = CYAN;
-    constexpr uint16_t MOUTH_COLOR = CYAN;
 
     // Respond to IMU tilt.
     constexpr bool BLOB_USE_IMU = true;
@@ -34,7 +31,7 @@ namespace blob_native
     constexpr bool BLOB_GLOW_ENABLED = false;
     constexpr int GLOW_LAYER_COUNT = 3;
     constexpr float GLOW_LAYER_SCALE[GLOW_LAYER_COUNT] = {1.3f, 1.2f, 1.1f};
-    constexpr uint16_t GLOW_LAYER_COLOR[GLOW_LAYER_COUNT] = {0x0008, 0x082b, 0x106f};
+    constexpr uint16_t GLOW_LAYER_COLOR[GLOW_LAYER_COUNT] = {0x4008, 0x8010, 0xC018};
 
     // Lightweight performance overlay (FPS).
     constexpr bool BLOB_PERF_OVERLAY_ENABLED = false;

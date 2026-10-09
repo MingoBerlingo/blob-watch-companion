@@ -96,7 +96,7 @@ namespace blob_native
             }
 
             // Outline.
-            const lv_color_t outline = col(OUTLINE_COLOR);
+            const lv_color_t outline = lv_theme_get_color_primary(g_screen);
             for (int i = 0; i < POINTS; i++)
             {
                 const int next = (i + 1) % POINTS;
@@ -107,7 +107,7 @@ namespace blob_native
             int16_t lx, ly, rx, ry;
             compute_eye_positions(cx, cy, FACE_DIR_X, FACE_DIR_Y, speed, phase, &lx, &ly, &rx, &ry);
 
-            const lv_color_t eye_c = col(EYE_COLOR);
+            const lv_color_t eye_c = lv_theme_get_color_secondary(g_screen);
             if (compute_blink_amount(speed, phase) > 0.4f)
             {
                 const int16_t half_lid = EYE_RADIUS + 1;
@@ -133,7 +133,7 @@ namespace blob_native
             // Mouth (neutral smile).
             int16_t mx0, my0, mxm, mym, mx1, my1;
             compute_mouth_points(cx, cy, FACE_DIR_X, FACE_DIR_Y, speed, phase, &mx0, &my0, &mxm, &mym, &mx1, &my1);
-            const lv_color_t mouth_c = col(MOUTH_COLOR);
+            const lv_color_t mouth_c = lv_theme_get_color_secondary(g_screen);
             draw_segment(ctx, &line_dsc, mx0, my0, mxm, mym, mouth_c);
             draw_segment(ctx, &line_dsc, mxm, mym, mx1, my1, mouth_c);
         }
@@ -279,7 +279,6 @@ namespace blob_native
         {
             g_fps_label = lv_label_create(g_screen);
             lv_obj_align(g_fps_label, LV_ALIGN_TOP_LEFT, BLOB_PERF_OVERLAY_X, BLOB_PERF_OVERLAY_Y);
-            lv_obj_set_style_text_color(g_fps_label, col(WHITE), 0);
             lv_obj_set_style_text_font(g_fps_label, &lv_font_montserrat_16, 0);
             lv_label_set_text(g_fps_label, "");
             lv_obj_move_foreground(g_fps_label);

@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 
+#include "apps/blob_native/lv_port/theme.h"
 #include "apps/blob_native/shared_state.h"
 #include "platform/waveshare_native_board.h"
 
@@ -61,6 +62,8 @@ namespace blob_native
         g_indev_drv.type = LV_INDEV_TYPE_POINTER;
         g_indev_drv.read_cb = input_read_cb;
         lv_indev_drv_register(&g_indev_drv);
+
+        lv_port_apply_theme();
     }
 
     void lv_port_handler()

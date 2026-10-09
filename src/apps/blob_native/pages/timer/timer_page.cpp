@@ -160,13 +160,12 @@ namespace blob_native
             lv_obj_set_style_arc_width(g_arc, 8, LV_PART_MAIN);
             lv_obj_set_style_arc_width(g_arc, 8, LV_PART_INDICATOR);
             lv_obj_set_style_arc_color(g_arc, col(BG_COLOR), LV_PART_MAIN);
-            lv_obj_set_style_arc_color(g_arc, col(CYAN), LV_PART_INDICATOR);
+            lv_obj_set_style_arc_color(g_arc, lv_theme_get_color_primary(g_screen), LV_PART_INDICATOR);
             lv_obj_set_style_bg_opa(g_arc, LV_OPA_TRANSP, 0);
             lv_obj_remove_style(g_arc, nullptr, LV_PART_KNOB);
 
             g_time_label = lv_label_create(g_screen);
             lv_obj_clear_flag(g_time_label, LV_OBJ_FLAG_CLICKABLE);
-            lv_obj_set_style_text_color(g_time_label, col(WHITE), 0);
             lv_obj_set_style_text_font(g_time_label, &lv_font_montserrat_24, 0);
             lv_obj_align(g_time_label, LV_ALIGN_CENTER, 0, 0);
 
