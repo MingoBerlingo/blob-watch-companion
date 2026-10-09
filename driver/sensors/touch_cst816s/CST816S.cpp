@@ -16,7 +16,7 @@ CST816S Touch_CTS816;
 
 void CST816S_I2C_Write(uint8_t reg, uint8_t value)
 {
-    DEV_I2C_Write_Byte( CST816_ADDR, reg, value);
+    DEV_I2C_Write_Byte(CST816_ADDR, reg, value);
 }
 uint8_t CST816S_I2C_Read(uint8_t reg)
 {
@@ -64,9 +64,8 @@ void CST816S_Set_Mode(uint8_t mode)
 {
     if (mode == CST816S_Point_Mode)
     {
-        // 
+        //
         CST816S_I2C_Write(CST816_IrqCtl, 0x41);
-        
     }
     else if (mode == CST816S_Gesture_Mode)
     {
@@ -77,10 +76,7 @@ void CST816S_Set_Mode(uint8_t mode)
     {
         CST816S_I2C_Write(CST816_IrqCtl, 0X71);
     }
-        
 }
-
-
 
 uint8_t CST816S_init(uint8_t mode)
 {
@@ -106,7 +102,7 @@ uint8_t CST816S_init(uint8_t mode)
     Touch_CTS816.y_point = 0;
     CST816S_I2C_Write(CST816_IrqPluseWidth, 0x01);
     CST816S_I2C_Write(CST816_NorScanPer, 0x01);
-    
+
     Touch_CTS816.mode = mode;
 
     return true;
@@ -125,9 +121,13 @@ CST816S CST816S_Get_Point()
 
     return Touch_CTS816;
 }
+uint8_t CST816S_Get_FingerNum(void)
+{
+    return CST816S_I2C_Read(CST816_FingerNum);
+}
 uint8_t CST816S_Get_Gesture(void)
 {
     uint8_t gesture;
-    gesture=CST816S_I2C_Read(CST816_GestureID);
+    gesture = CST816S_I2C_Read(CST816_GestureID);
     return gesture;
 }

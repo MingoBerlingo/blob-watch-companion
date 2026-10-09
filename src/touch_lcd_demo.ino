@@ -1,7 +1,7 @@
 #include <SPI.h>
 #include <Wire.h>
 
-#include "apps/blob_native/blob_native_app.h"
+#include "apps/blob_native/app/app.h"
 
 void setup()
 {

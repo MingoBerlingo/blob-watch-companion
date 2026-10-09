@@ -417,6 +417,25 @@ void LCD_1IN28_Clear(UWORD Color)
 function :	Sends the image buffer in RAM to displays
 parameter:
 ******************************************************************************/
+void LCD_1IN28_ClearSafe(UWORD Color)
+{
+	UWORD j;
+	UWORD row[LCD_1IN28_WIDTH];
+
+	Color = ((Color << 8) & 0xff00) | (Color >> 8);
+	for (UWORD x = 0; x < LCD_1IN28_WIDTH; x++)
+	{
+		row[x] = Color;
+	}
+
+	LCD_1IN28_SetWindows(0, 0, LCD_1IN28_WIDTH, LCD_1IN28_HEIGHT);
+	DEV_Digital_Write(LCD_DC_PIN, 1);
+	for (j = 0; j < LCD_1IN28_HEIGHT; j++)
+	{
+		DEV_SPI_Write_nByte((uint8_t *)row, LCD_1IN28_WIDTH * 2);
+	}
+}
+
 void LCD_1IN28_Display(UWORD *Image)
 {
 	UWORD j;
@@ -442,6 +461,19 @@ void LCD_1IN28_DisplayWindows(UWORD Xstart, UWORD Ystart, UWORD Xend, UWORD Yend
 	{
 		Addr = Xstart + j * LCD_1IN28_WIDTH;
 		DEV_SPI_Write_nByte((uint8_t *)&Image[Addr], (Xend - Xstart) * 2);
+	}
+}
+
+void LCD_1IN28_DisplayArea(UWORD Xstart, UWORD Ystart, UWORD Xend, UWORD Yend, UWORD *Image)
+{
+	UWORD j;
+	const UWORD width = Xend - Xstart;
+
+	LCD_1IN28_SetWindows(Xstart, Ystart, Xend, Yend);
+	DEV_Digital_Write(LCD_DC_PIN, 1);
+	for (j = 0; j < (Yend - Ystart); j++)
+	{
+		DEV_SPI_Write_nByte((uint8_t *)&Image[j * width], width * 2);
 	}
 }
 
