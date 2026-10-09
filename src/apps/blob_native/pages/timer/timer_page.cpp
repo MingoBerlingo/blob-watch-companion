@@ -13,7 +13,7 @@ namespace blob_native
 
     namespace
     {
-        constexpr int kRollerOptions = 100; // "00" .. "99"
+        constexpr int kRollerOptions = 60; // "00" .. "59"
 
         lv_obj_t *g_screen = nullptr;
 
@@ -24,14 +24,15 @@ namespace blob_native
         lv_obj_t *g_arc = nullptr;
         lv_obj_t *g_time_label = nullptr;
         lv_obj_t *g_msgbox = nullptr;
+        lv_obj_t *g_back_btn = nullptr;
+        lv_obj_t *g_play_btn = nullptr;
+        lv_obj_t *g_cancel_btn = nullptr;
+        lv_obj_t *g_play_label = nullptr;
 
         // Roller options string ("00\n01\n...\n99") and msgbox button labels.
         char g_roller_options[4 * kRollerOptions];
-        const char *g_msgbox_btn_map[4] = {"Back", "Play", "Cancel", ""};
 
         // Change tracking.
-        int g_last_minutes = -1;
-        int g_last_seconds = -1;
         int32_t g_last_display_seconds = -1;
         int g_last_arc_value = -1;
         bool g_last_running = false;
@@ -87,29 +88,44 @@ namespace blob_native
             }
         }
 
-        void on_msgbox_value_changed(lv_event_t *e)
+        void on_back_clicked(lv_event_t *e)
         {
-            lv_obj_t *btnm = lv_event_get_target(e);
-            const uint16_t btn_id = lv_btnmatrix_get_selected_btn(btnm);
-
-            if (btn_id == 0)
-            {
-                timer_hide_controls();
-            }
-            else if (btn_id == 1)
-            {
-                timer_action(millis());
-            }
-            else if (btn_id == 2)
-            {
-                timer_cancel();
-            }
+            (void)e;
+            timer_hide_controls();
         }
 
-        void update_msgbox_buttons(bool running)
+        void on_play_clicked(lv_event_t *e)
         {
-            g_msgbox_btn_map[1] = running ? "Pause" : "Play";
-            lv_btnmatrix_set_map(lv_msgbox_get_btns(g_msgbox), g_msgbox_btn_map);
+            (void)e;
+            timer_action(millis());
+        }
+
+        void on_cancel_clicked(lv_event_t *e)
+        {
+            (void)e;
+            timer_cancel();
+        }
+
+        void update_play_button(bool running)
+        {
+            lv_label_set_text(g_play_label, running ? "Pause" : "Play");
+        }
+
+        lv_obj_t *add_control_button(lv_obj_t *parent, const char *text, lv_color_t color)
+        {
+            lv_obj_t *btn = lv_btn_create(parent);
+            lv_obj_set_size(btn, 68, 48);
+            lv_obj_set_style_pad_hor(btn, 4, 0);
+            lv_obj_set_style_bg_color(btn, color, 0);
+            lv_obj_set_style_bg_color(btn, lv_color_darken(color, LV_OPA_30), LV_STATE_PRESSED);
+
+            lv_obj_t *label = lv_label_create(btn);
+            lv_label_set_text(label, text);
+            lv_obj_set_style_text_font(label, &lv_font_montserrat_16, 0);
+            lv_obj_set_style_text_color(label, lv_color_white(), 0);
+            lv_obj_center(label);
+
+            return btn;
         }
 
         void build_screen()
@@ -126,20 +142,19 @@ namespace blob_native
             g_minutes_roller = lv_roller_create(g_screen);
             lv_roller_set_options(g_minutes_roller, g_roller_options, LV_ROLLER_MODE_NORMAL);
             lv_roller_set_visible_row_count(g_minutes_roller, 3);
-            lv_obj_set_pos(g_minutes_roller, 40, 50);
-            lv_obj_set_size(g_minutes_roller, 70, 120);
+            lv_obj_set_pos(g_minutes_roller, 35, 70);
+            lv_obj_set_size(g_minutes_roller, 80, 80);
             lv_obj_add_event_cb(g_minutes_roller, on_minutes_changed, LV_EVENT_VALUE_CHANGED, nullptr);
 
             g_seconds_roller = lv_roller_create(g_screen);
             lv_roller_set_options(g_seconds_roller, g_roller_options, LV_ROLLER_MODE_NORMAL);
             lv_roller_set_visible_row_count(g_seconds_roller, 3);
-            lv_obj_set_pos(g_seconds_roller, 130, 50);
-            lv_obj_set_size(g_seconds_roller, 70, 120);
+            lv_obj_set_pos(g_seconds_roller, 125, 70);
+            lv_obj_set_size(g_seconds_roller, 80, 80);
             lv_obj_add_event_cb(g_seconds_roller, on_seconds_changed, LV_EVENT_VALUE_CHANGED, nullptr);
 
             g_start_btn = lv_btn_create(g_screen);
-            lv_obj_set_pos(g_start_btn, 70, 190);
-            lv_obj_set_size(g_start_btn, 100, 44);
+            lv_obj_set_pos(g_start_btn, 65, 170);
             lv_obj_add_event_cb(g_start_btn, on_start_clicked, LV_EVENT_CLICKED, nullptr);
 
             lv_obj_t *start_label = lv_label_create(g_start_btn);
@@ -169,11 +184,24 @@ namespace blob_native
             lv_obj_set_style_text_font(g_time_label, &lv_font_montserrat_24, 0);
             lv_obj_align(g_time_label, LV_ALIGN_CENTER, 0, 0);
 
-            // Controls message box (Back / Pause-Play / Cancel).
-            g_msgbox = lv_msgbox_create(g_screen, "Timer", "", g_msgbox_btn_map, false);
-            lv_obj_set_width(g_msgbox, 200);
+            // Controls message box (Back / Pause-Play / Cancel) in a flex column.
+            g_msgbox = lv_msgbox_create(g_screen, "", "", nullptr, false);
+            lv_obj_set_width(g_msgbox, 120);
             lv_obj_center(g_msgbox);
-            lv_obj_add_event_cb(lv_msgbox_get_btns(g_msgbox), on_msgbox_value_changed, LV_EVENT_VALUE_CHANGED, nullptr);
+
+            lv_obj_t *controls_content = lv_msgbox_get_content(g_msgbox);
+            lv_obj_set_flex_flow(controls_content, LV_FLEX_FLOW_COLUMN);
+            lv_obj_set_flex_align(controls_content, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+            lv_obj_set_style_pad_row(controls_content, 8, 0);
+
+            g_back_btn = add_control_button(controls_content, "Back", lv_color_hex(0x616161));
+            g_play_btn = add_control_button(controls_content, "Play", lv_color_hex(0xFF9800));
+            g_cancel_btn = add_control_button(controls_content, "Cancel", lv_color_hex(0xF44336));
+            g_play_label = lv_obj_get_child(g_play_btn, 0);
+
+            lv_obj_add_event_cb(g_back_btn, on_back_clicked, LV_EVENT_CLICKED, nullptr);
+            lv_obj_add_event_cb(g_play_btn, on_play_clicked, LV_EVENT_CLICKED, nullptr);
+            lv_obj_add_event_cb(g_cancel_btn, on_cancel_clicked, LV_EVENT_CLICKED, nullptr);
 
             lv_obj_add_event_cb(g_screen, on_screen_clicked, LV_EVENT_CLICKED, nullptr);
         }
@@ -192,20 +220,10 @@ namespace blob_native
             set_visible(g_time_label, show_run);
             set_visible(g_msgbox, show_run && controls);
 
-            if (show_setup)
+            if (show_setup && force)
             {
-                const int mins = timer_minutes();
-                const int secs = timer_seconds();
-                if (force || mins != g_last_minutes)
-                {
-                    lv_roller_set_selected(g_minutes_roller, (uint16_t)mins, LV_ANIM_OFF);
-                    g_last_minutes = mins;
-                }
-                if (force || secs != g_last_seconds)
-                {
-                    lv_roller_set_selected(g_seconds_roller, (uint16_t)secs, LV_ANIM_OFF);
-                    g_last_seconds = secs;
-                }
+                lv_roller_set_selected(g_minutes_roller, (uint16_t)timer_minutes(), LV_ANIM_OFF);
+                lv_roller_set_selected(g_seconds_roller, (uint16_t)timer_seconds(), LV_ANIM_OFF);
             }
 
             if (show_run)
@@ -240,7 +258,7 @@ namespace blob_native
                 const bool running = timer_running();
                 if (force || running != g_last_running)
                 {
-                    update_msgbox_buttons(running);
+                    update_play_button(running);
                     g_last_running = running;
                 }
             }

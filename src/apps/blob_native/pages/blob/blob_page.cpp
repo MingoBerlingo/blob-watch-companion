@@ -264,8 +264,8 @@ namespace blob_native
     {
         g_screen = lv_obj_create(nullptr);
         lv_obj_clear_flag(g_screen, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_SCROLL_ELASTIC |
-                                    LV_OBJ_FLAG_SCROLL_MOMENTUM | LV_OBJ_FLAG_SCROLL_WITH_ARROW |
-                                    LV_OBJ_FLAG_SNAPPABLE);
+                                        LV_OBJ_FLAG_SCROLL_MOMENTUM | LV_OBJ_FLAG_SCROLL_WITH_ARROW |
+                                        LV_OBJ_FLAG_SNAPPABLE);
         lv_obj_set_style_bg_color(g_screen, col(BG_COLOR), 0);
         lv_obj_set_style_bg_opa(g_screen, LV_OPA_COVER, 0);
 

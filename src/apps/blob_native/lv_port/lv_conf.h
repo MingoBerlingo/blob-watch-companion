@@ -28,12 +28,12 @@
  *=========================*/
 #define LV_MEM_CUSTOM 0
 #if LV_MEM_CUSTOM == 0
-    #define LV_MEM_SIZE (24U * 1024U)
-    #define LV_MEM_ADR 0
-    #if LV_MEM_ADR == 0
-        #undef LV_MEM_POOL_INCLUDE
-        #undef LV_MEM_POOL_ALLOC
-    #endif
+#define LV_MEM_SIZE (24U * 1024U)
+#define LV_MEM_ADR 0
+#if LV_MEM_ADR == 0
+#undef LV_MEM_POOL_INCLUDE
+#undef LV_MEM_POOL_ALLOC
+#endif
 #endif
 
 #define LV_MEM_BUF_MAX_NUM 16
@@ -46,8 +46,8 @@
 #define LV_INDEV_DEF_READ_PERIOD 30
 #define LV_TICK_CUSTOM 1
 #if LV_TICK_CUSTOM
-    #define LV_TICK_CUSTOM_INCLUDE "Arduino.h"
-    #define LV_TICK_CUSTOM_SYS_TIME_EXPR (millis())
+#define LV_TICK_CUSTOM_INCLUDE "Arduino.h"
+#define LV_TICK_CUSTOM_SYS_TIME_EXPR (millis())
 #endif
 #define LV_DPI_DEF 130
 
