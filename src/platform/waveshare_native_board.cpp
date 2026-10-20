@@ -58,7 +58,7 @@ bool waveshare_native_begin()
   }
 
   LCD_1IN28_Init(HORIZONTAL);
-  DEV_SET_PWM(100);
+  DEV_SET_PWM(70);
 
   QMI8658_init();
 #if WAVESHARE_NATIVE_ENABLE_TOUCH
@@ -67,6 +67,11 @@ bool waveshare_native_begin()
   s_touch_last_init_ms = 0;
 #endif
   return true;
+}
+
+void waveshare_native_set_brightness(uint8_t percent)
+{
+  DEV_SET_PWM(percent > 100 ? 100 : percent);
 }
 
 void waveshare_native_clear_display(uint16_t color)
