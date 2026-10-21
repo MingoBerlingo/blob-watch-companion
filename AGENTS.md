@@ -49,3 +49,19 @@ pio run
 ```
 
 If serial behavior changed, also verify monitor output at 115200 baud.
+
+## Desktop UI Validation
+
+For UI, navigation, or timer changes, also build and test the shared-source desktop simulator:
+
+```bash
+cmake -S simulator -B simulator/build -DCMAKE_BUILD_TYPE=Release
+cmake --build simulator/build --parallel
+ctest --test-dir simulator/build --output-on-failure
+```
+
+Inspect the generated PNGs in `simulator/build/screenshots/` when changing visuals.
+Only update `simulator/tests/visual-baselines.json` and its PNG references after
+reviewing an intentional UI change; ordinary test runs must not update them.
+See `simulator/README.md` for dependencies, controls, and explicit baseline updates.
+Firmware validation with `pio run` is still required.

@@ -70,3 +70,9 @@ If needed, enter BOOTSEL mode manually before upload:
 ```bash
 pio device monitor -b 115200
 ```
+
+## Desktop Simulator
+
+Run and automatically test the real LVGL screens without the board. See
+[simulator/README.md](simulator/README.md) for setup, controls, screenshot baselines,
+and headless integration tests.

@@ -1,0 +1,25 @@
+name: Desktop simulator
+on:
+  push:
+  pull_request:
+jobs:
+  simulator:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install SDL2
+        run: sudo apt-get update && sudo apt-get install -y libsdl2-dev
+      - name: Configure
+        run: cmake -S simulator -B simulator/build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build simulator/build --parallel 2
+      - name: Test interactions and visual baselines
+        run: ctest --test-dir simulator/build --output-on-failure
+      - name: Retain screenshots and reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simulator-screenshots
+          path: |
+            simulator/build/screenshots/
+            simulator/build/Testing/Temporary/LastTest.log
