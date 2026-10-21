@@ -29,7 +29,7 @@
 - [x] Add SDL display, circular masking, mouse/swipe input, keyboard navigation/tilt/time acceleration and deterministic headless runtime.
 - [x] Add integration scenarios for repeated navigation gestures, real pointer slider dragging, timer buttons/pause/resume/expiry/cancel, and deterministic screenshots; verify contract passes.
 - [x] Document install/build/run/test commands and limitations. Add CI to build/test and retain screenshots.
-- [ ] Run host regression, CTest, screenshots inspection and pio run; obtain independent review, fix material findings, commit/push and open PR targeting feat--timer.
+- [x] Run host regression, CTest, screenshots inspection and pio run; obtain independent review, fix material findings, commit/push and open PR targeting feat--timer.
 
 ## Execution record
 - Baseline: clean feat--timer at d6f14b7; existing navigation regression passed in previous integration. New branch codex/lvgl-desktop-simulator.
@@ -38,4 +38,4 @@
 - Implementation: shared source desktop build, SDL window/dummy driver, 32 real behavior checks, RGB565/circular BMP+PNG captures, repeat-run equality and committed visual references.
 - Verification: host CTest 2/2 passes in Debug and clean downloaded-LVGL Release builds; pio run passes. Inspected all eight UI captures. Interactive SDL window launched and exited successfully.
 - Independent review: found dropped batched mouse clicks; reproduced with failing actual-Start-button test, then delivered each pointer transition to LVGL without advancing virtual time. Regression passes; follow-up reviewer reports no remaining material findings.
-- Linux/container and remote CI validation recorded in the PR.
+- Ubuntu 24.04 container: CTest 2/2 passes, including the same visual hashes as macOS. Branch pushed and PR #3 opened toward feat--timer; GitHub Actions performs the same checks remotely.
