@@ -22,9 +22,27 @@ namespace blob_native
         };
 
         Page g_page = Page::Blob;
+        bool g_swipe_consumed = false;
+        bool g_was_touching = false;
 
         void navigate(const WaveshareNativeTouchSample &touch)
         {
+            // A gesture register can report the same swipe across many polls.
+            // Rearm on a new contact or an idle sample after release.
+            if ((touch.touching && !g_was_touching) ||
+                (!touch.touching && touch.gesture == WaveshareNativeTouchGesture::None))
+            {
+                g_swipe_consumed = false;
+            }
+            g_was_touching = touch.touching;
+            if (g_swipe_consumed ||
+                (touch.gesture != WaveshareNativeTouchGesture::Left &&
+                 touch.gesture != WaveshareNativeTouchGesture::Right))
+            {
+                return;
+            }
+            g_swipe_consumed = true;
+
             if (g_page == Page::Blob && touch.gesture == WaveshareNativeTouchGesture::Left)
             {
                 timer_enter();
@@ -63,6 +81,8 @@ namespace blob_native
         brightness_page_init();
         blob_page_show();
         g_page = Page::Blob;
+        g_swipe_consumed = false;
+        g_was_touching = false;
     }
 
     void page_manager_loop()

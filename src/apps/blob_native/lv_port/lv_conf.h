@@ -80,7 +80,7 @@
 /* Widgets (only what the timer screen uses) */
 #define LV_USE_ANIMIMG 0
 #define LV_USE_ARC 1
-#define LV_USE_BAR 0
+#define LV_USE_BAR 1
 #define LV_USE_BTN 1
 #define LV_USE_BTNMATRIX 1
 #define LV_USE_CANVAS 0
@@ -90,7 +90,7 @@
 #define LV_USE_LABEL 1
 #define LV_USE_LINE 0
 #define LV_USE_ROLLER 1
-#define LV_USE_SLIDER 0
+#define LV_USE_SLIDER 1
 #define LV_USE_SWITCH 0
 #define LV_USE_TEXTAREA 0
 #define LV_USE_TABLE 0
@@ -123,11 +123,11 @@
 #define LV_USE_THEME_MONO 0
 
 /* Fonts */
-#define LV_FONT_MONTSERRAT_12 0
+#define LV_FONT_MONTSERRAT_12 1
 #define LV_FONT_MONTSERRAT_14 1
 #define LV_FONT_MONTSERRAT_16 1
 #define LV_FONT_MONTSERRAT_18 0
-#define LV_FONT_MONTSERRAT_20 0
+#define LV_FONT_MONTSERRAT_20 1
 #define LV_FONT_MONTSERRAT_22 0
 #define LV_FONT_MONTSERRAT_24 1
 #define LV_FONT_MONTSERRAT_26 0
