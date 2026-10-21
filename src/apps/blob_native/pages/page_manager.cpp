@@ -4,6 +4,7 @@
 
 #include "apps/blob_native/lv_port/lv_port.h"
 #include "apps/blob_native/pages/blob/blob_page.h"
+#include "apps/blob_native/pages/brightness/brightness_page.h"
 #include "apps/blob_native/pages/timer/timer_page.h"
 #include "apps/blob_native/timer/view.h"
 #include "platform/waveshare_native_board.h"
@@ -17,30 +18,58 @@ namespace blob_native
         {
             Blob = 0,
             Timer,
+            Brightness,
         };
 
         Page g_page = Page::Blob;
+        bool g_swipe_consumed = false;
+        bool g_was_touching = false;
 
         void navigate(const WaveshareNativeTouchSample &touch)
         {
-            if (g_page == Page::Blob)
+            // A gesture register can report the same swipe across many polls.
+            // Rearm on a new contact or an idle sample after release.
+            if ((touch.touching && !g_was_touching) ||
+                (!touch.touching && touch.gesture == WaveshareNativeTouchGesture::None))
             {
-                if (touch.gesture == WaveshareNativeTouchGesture::Left)
-                {
-                    timer_enter();
-                    blob_page_hide();
-                    timer_page_show();
-                    g_page = Page::Timer;
-                }
+                g_swipe_consumed = false;
+            }
+            g_was_touching = touch.touching;
+            if (g_swipe_consumed ||
+                (touch.gesture != WaveshareNativeTouchGesture::Left &&
+                 touch.gesture != WaveshareNativeTouchGesture::Right))
+            {
                 return;
             }
+            g_swipe_consumed = true;
 
-            if (touch.gesture == WaveshareNativeTouchGesture::Right)
+            if (g_page == Page::Blob && touch.gesture == WaveshareNativeTouchGesture::Left)
+            {
+                timer_enter();
+                blob_page_hide();
+                timer_page_show();
+                g_page = Page::Timer;
+            }
+            else if (g_page == Page::Timer && touch.gesture == WaveshareNativeTouchGesture::Right)
             {
                 timer_exit();
                 timer_page_hide();
                 blob_page_show();
                 g_page = Page::Blob;
+            }
+            else if (g_page == Page::Timer && touch.gesture == WaveshareNativeTouchGesture::Left)
+            {
+                timer_exit();
+                timer_page_hide();
+                brightness_page_show();
+                g_page = Page::Brightness;
+            }
+            else if (g_page == Page::Brightness && touch.gesture == WaveshareNativeTouchGesture::Right)
+            {
+                brightness_page_hide();
+                timer_enter();
+                timer_page_show();
+                g_page = Page::Timer;
             }
         }
     } // namespace
@@ -49,8 +78,11 @@ namespace blob_native
     {
         blob_page_init();
         timer_page_init();
+        brightness_page_init();
         blob_page_show();
         g_page = Page::Blob;
+        g_swipe_consumed = false;
+        g_was_touching = false;
     }
 
     void page_manager_loop()
