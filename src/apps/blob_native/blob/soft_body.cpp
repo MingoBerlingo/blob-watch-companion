@@ -145,6 +145,17 @@ namespace blob_native
         measure(body);
     }
 
+    void soft_body_impulse(SoftBody &body, float velocity_x, float velocity_y)
+    {
+        if (!isfinite(velocity_x) || !isfinite(velocity_y)) return;
+        float vx=body.velocity_x+velocity_x, vy=body.velocity_y+velocity_y;
+        const float speed=sqrtf(vx*vx+vy*vy);
+        if (speed>400) { vx*=400/speed; vy*=400/speed; }
+        const float dx=vx-body.velocity_x, dy=vy-body.velocity_y;
+        for (auto &point:body.points) { point.vx+=dx; point.vy+=dy; }
+        body.velocity_x=vx; body.velocity_y=vy;
+    }
+
     void soft_body_update(SoftBody &body, uint32_t elapsed_ms, float acceleration_x, float acceleration_y)
     {
         // At most eight fixed steps: pauses/debugger stalls cannot cause an

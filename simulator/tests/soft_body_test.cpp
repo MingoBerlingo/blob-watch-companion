@@ -61,7 +61,7 @@ int main() {
         soft_body_update(response, 8, BLOB_SOFT_BODY_ACCELERATION, 0);
         soft_body_update(previous_response, 8, 650, 0);
     }
-    check(response.center_x-120 > (previous_response.center_x-120)*1.4f, "Small tilts produce a stronger initial gravity response");
+    check(std::fabs(response.center_x-previous_response.center_x)<0.001f, "Steady gravity remains at its original strength");
     const float rest_area = area(body);
     auto initial = body;
     for (int i = 0; i < 2000; ++i) soft_body_update(body, 8, 0, 0);

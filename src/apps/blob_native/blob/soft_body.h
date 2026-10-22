@@ -23,6 +23,7 @@ namespace blob_native
     };
 
     void soft_body_reset(SoftBody &body, float center_x, float center_y, float radius, float arena_radius);
+    void soft_body_impulse(SoftBody &body, float velocity_x, float velocity_y);
     void soft_body_update(SoftBody &body, uint32_t elapsed_ms, float acceleration_x, float acceleration_y);
     void soft_body_outline(const SoftBody &body, int16_t *px, int16_t *py, int count);
 }

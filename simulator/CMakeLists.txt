@@ -36,7 +36,7 @@ add_executable(blob_simulator
     "${APP}/lv_port/lv_port.cpp" "${APP}/lv_port/theme.cpp"
     "${APP}/pages/page_manager.cpp" "${APP}/pages/blob/blob_page.cpp"
     "${APP}/pages/timer/timer_page.cpp" "${APP}/pages/brightness/brightness_page.cpp"
-    "${APP}/timer/runtime_draw.cpp" "${APP}/timer/logic.cpp" "${APP}/blob/shape.cpp" "${APP}/blob/face.cpp" "${APP}/blob/soft_body.cpp")
+    "${APP}/timer/runtime_draw.cpp" "${APP}/timer/logic.cpp" "${APP}/blob/shape.cpp" "${APP}/blob/face.cpp" "${APP}/blob/soft_body.cpp" "${APP}/blob/motion_response.cpp")
 target_compile_definitions(blob_simulator PRIVATE BLOB_DESKTOP_SIMULATOR)
 target_include_directories(blob_simulator PRIVATE "${APP_ROOT}" "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(blob_simulator PRIVATE lvgl_sim SDL2::SDL2)
@@ -60,3 +60,7 @@ add_test(NAME blob_shape_regression COMMAND blob_shape_benchmark)
 add_executable(soft_body_test tests/soft_body_test.cpp "${APP}/blob/soft_body.cpp")
 target_include_directories(soft_body_test PRIVATE "${APP_ROOT}" "${CMAKE_CURRENT_SOURCE_DIR}/compat")
 add_test(NAME soft_body_regression COMMAND soft_body_test)
+
+add_executable(motion_response_test tests/motion_response_test.cpp "${APP}/blob/motion_response.cpp" "${APP}/blob/soft_body.cpp")
+target_include_directories(motion_response_test PRIVATE "${APP_ROOT}")
+add_test(NAME motion_response_regression COMMAND motion_response_test)

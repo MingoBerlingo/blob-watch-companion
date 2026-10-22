@@ -23,7 +23,7 @@ int main(int argc, char **argv)
         else if (argument == "--help")
         {
             std::cout << "blob_simulator [--test --output DIRECTORY] [--benchmark] [--softbody-demo --output DIRECTORY]\n"
-                      << "Mouse: touch/drag/swipe. Left/Right: pages. W/X/A/D: tilt; R: reset.\n"
+                      << "Mouse: touch/drag/swipe. Left/Right: pages. W/X/A/D: tilt; R: reset; J/L: shake.\n"
                       << "Space: toggle 10x clock. S: screenshot.bmp. Escape: quit.\n";
             return 0;
         }

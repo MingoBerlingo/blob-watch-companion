@@ -223,7 +223,8 @@ cmake --build simulator/build-release --parallel
 ./simulator/build-release/blob_simulator
 ```
 
-Use W/X/A/D to tilt, R to remove tilt, and arrows to navigate. There is no touch
+Use W/X/A/D to tilt, R to remove tilt, J/L for sideways shake pulses, and arrows
+to navigate. There is no touch
 dragging in this prototype, so swipes keep their existing meaning. Neutral tilt
 means zero acceleration: the Blob starts still and, after motion, settles where
 its remaining momentum and contact forces take it rather than recentering.
@@ -239,7 +240,8 @@ ffmpeg -y -framerate 25 -i /tmp/blob-softbody/frame-%03d.bmp \
 
 The model stores 312 bytes (previously 704 with 24 particles), with no heap
 allocation. On this Mac, 100,000 fixed steps take roughly 10–15 ms in Release; this is not RP2040 timing or animation FPS.
-Tilt strength is 1,100 px/s² at full input, up from 650. The star valleys use
+Steady tilt strength is restored to 650 px/s². Quick turns and translations
+produce separate motion impulses instead of a higher gravity multiplier. The star valleys use
 62% of the outer radius and the top tip starts upright.
 Device FPS must be measured separately before calling this performance-ready.
 
@@ -256,3 +258,26 @@ body-to-body contact or exact volume constraint. Stress tests cover the current
 parameters, not arbitrary stiffness/forces. Increasing stiffness requires retesting
 the fixed integration step, and a highly compressed contour could require more
 robust topology handling before adding dragging or obstacles.
+
+### Immediate movement response
+
+The board adapter now exposes full acceleration in g and gyro in degrees/second.
+A lightweight complementary estimator predicts the gravity vector from the gyro
+and corrects it slowly with plausible accelerometer samples. This separates
+steady orientation from transient motion approximately; it is not calibrated
+linear-acceleration navigation or an exact gravity separator during sustained
+translation. Hardware feel still needs user validation.
+
+Gravity remains at 650 px/s². Gyro-driven changes in the gravity direction add an
+immediate velocity impulse (650 px/s per unit vector change). Residual sideways
+acceleration supplies the opposite inertial impulse (6,500 px/s² per g), with a
+0.04 g noise deadband. First samples seed the estimate without a kick, and the
+body's center speed is capped at 400 px/s. Internal deformation velocities remain
+intact. Estimator state resets on page entry. Motion uses the same 64 ms elapsed
+cap as the physics to limit effects from debugger stalls.
+
+Tests distinguish stationary/held tilt from movement, check quick turns and pure
+translation, reject small sensor noise/non-finite readings, compare frame rates,
+and stress repeated bounded impulses. The simulator synthesizes gyro rates from
+its tilt changes; its J/L pulses add transient accelerometer input. These are
+behavior tests, not a reproduction of the hardware sensor's filtering/noise.

@@ -14,6 +14,9 @@ uint32_t clock_ms = 1;
 WaveshareNativeTouchSample input = {false, 0, 0, WaveshareNativeTouchGesture::None};
 uint8_t backlight = 70;
 float tilt_x = 0, tilt_y = 0;
+float previous_gx=0, previous_gy=0, previous_gz=1;
+uint32_t motion_time=0, shake_until=0;
+float shake_x=0, shake_y=0;
 std::array<uint32_t, simulator::width * simulator::height> framebuffer{};
 SDL_Window *window = nullptr;
 SDL_Renderer *renderer = nullptr;
@@ -109,6 +112,24 @@ void set_tilt(float x, float y)
     tilt_y = std::clamp(y, -1.0f, 1.0f);
 }
 void read_tilt(float *x, float *y) { *x = tilt_x; *y = tilt_y; }
+void shake(float x_g, float y_g) { shake_x=x_g; shake_y=y_g; shake_until=clock_ms+80; }
+void read_motion(WaveshareNativeMotionSample *sample)
+{
+    float gx=tilt_x, gy=tilt_y;
+    const float squared=gx*gx+gy*gy;
+    float gz=std::sqrt(std::max(0.0f,1-squared));
+    if (squared>1) { gx/=std::sqrt(squared); gy/=std::sqrt(squared); }
+    const float dt=std::max(0.001f,(clock_ms-motion_time)/1000.0f);
+    const float cx=gy*previous_gz-gz*previous_gy;
+    const float cy=gz*previous_gx-gx*previous_gz;
+    const float cz=gx*previous_gy-gy*previous_gx;
+    const float length=std::sqrt(cx*cx+cy*cy+cz*cz);
+    const float dot=std::clamp(gx*previous_gx+gy*previous_gy+gz*previous_gz,-1.0f,1.0f);
+    const float scale=length>0.00001f ? std::atan2(length,dot)*57.2957795f/(length*dt):0;
+    const bool shaking=clock_ms<shake_until;
+    *sample={gx+(shaking?shake_x:0),gy+(shaking?shake_y:0),gz,cx*scale,cy*scale,cz*scale};
+    previous_gx=gx; previous_gy=gy; previous_gz=gz; motion_time=clock_ms;
+}
 void flush(int16_t x0, int16_t y0, int16_t x1, int16_t y1, const uint16_t *pixels)
 {
     for (int y = y0; y <= y1; ++y)
@@ -206,6 +227,8 @@ bool handle_events()
             case SDLK_a: set_tilt(tilt_x, tilt_y - 0.15f); break;
             case SDLK_d: set_tilt(tilt_x, tilt_y + 0.15f); break;
             case SDLK_r: set_tilt(0, 0); break;
+            case SDLK_j: shake(0, 0.8f); break;
+            case SDLK_l: shake(0, -0.8f); break;
             case SDLK_SPACE: accelerated = !accelerated; break;
             default: break;
             }

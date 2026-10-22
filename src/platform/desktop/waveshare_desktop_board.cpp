@@ -10,6 +10,12 @@ void waveshare_native_flush_area(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
 {
     simulator::flush(x0, y0, x1, y1, pixels);
 }
+bool waveshare_native_read_motion(WaveshareNativeMotionSample *sample)
+{
+    if (!sample) return false;
+    simulator::read_motion(sample);
+    return true;
+}
 bool waveshare_native_read_tilt(float *x, float *y)
 {
     if (!x || !y) return false;

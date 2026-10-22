@@ -9,6 +9,7 @@
 #include "apps/blob_native/blob/face.h"
 #include "apps/blob_native/blob/shape.h"
 #include "apps/blob_native/blob/soft_body.h"
+#include "apps/blob_native/blob/motion_response.h"
 #include "apps/blob_native/lv_port/lv_port.h"
 #include "apps/blob_native/shared_state.h"
 #include "platform/waveshare_native_board.h"
@@ -40,6 +41,7 @@ namespace blob_native
         int16_t g_py[POINTS];
 
         SoftBody g_soft_body{};
+        MotionResponse g_motion_response{};
         uint32_t g_last_blob_ms = 0;
 
         lv_obj_t *g_screen = nullptr;
@@ -196,7 +198,15 @@ namespace blob_native
                 const uint32_t elapsed = now - g_last_blob_ms;
                 g_last_blob_ms = now;
                 float tilt_x = 0, tilt_y = 0;
-                if (BLOB_USE_IMU) waveshare_native_read_tilt(&tilt_x, &tilt_y);
+                WaveshareNativeMotionSample sample{};
+                if (BLOB_USE_IMU && waveshare_native_read_motion(&sample))
+                {
+                    const MotionInput input{sample.acceleration_x_g, sample.acceleration_y_g, sample.acceleration_z_g,
+                                            sample.gyro_x_dps, sample.gyro_y_dps, sample.gyro_z_dps};
+                    const auto motion = motion_response_update(g_motion_response, input, elapsed);
+                    tilt_x = motion.tilt_x; tilt_y = motion.tilt_y;
+                    soft_body_impulse(g_soft_body, motion.kick_x, motion.kick_y);
+                }
                 soft_body_update(g_soft_body, elapsed,
                                  tilt_y * BLOB_SOFT_BODY_ACCELERATION,
                                  -tilt_x * BLOB_SOFT_BODY_ACCELERATION);
@@ -258,6 +268,7 @@ namespace blob_native
             g_state.cy = CENTER_Y;
             g_state.speed = 0.0f;
             g_last_blob_ms = millis();
+            g_motion_response = {};
             if (BLOB_SOFT_BODY_ENABLED)
             {
                 soft_body_reset(g_soft_body, CENTER_X, CENTER_Y, BLOB_RADIUS,
