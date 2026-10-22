@@ -106,9 +106,9 @@ shim and the `GUI_Paint.h` RGB565 black constant used by shared UI configuration
 Hardware-facing implementation lives in `src/platform/desktop/` and is guarded
 by `BLOB_DESKTOP_SIMULATOR`, so PlatformIO continues to use the native adapter.
 
-## Local larger-Blob experiment
+## Larger Blob rendering
 
-Branch `codex/local-larger-blob` starts from the timer merge. Radius is 50 px
+The larger-Blob work started from the timer merge. Radius is 50 px
 (previously 25 px), with contour wave amplitudes doubled. Face spacing scales
 with the radius. The current default is outline-only (`BLOB_FILL_ENABLED = false`)
 with a 2 px contour (`BLOB_OUTLINE_WIDTH`); facial strokes remain 1 px. The
@@ -142,7 +142,7 @@ per frame at radius 25 versus 14,712 at radius 50 (3.17× the RGB565 transfer da
 Desktop end-to-end timings do not establish a speedup and are too small/noisy to
 predict the board's performance. The simulator uses a synthetic clock, SDL instead
 of SPI, and the Mac CPU instead of RP2040; real frame rate needs a board measurement.
-The experiment remains unpushed; it has now been flashed and measured on the board.
+The implementation has been flashed and measured on the board.
 
 ### Device transfer measurements
 
