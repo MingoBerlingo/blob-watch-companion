@@ -50,6 +50,13 @@ def run(destination):
     colors = [data[i:i + 3] for i in range(offset, offset + 240 * 240 * 4, 4)]
     assert 550 < sum(c[0] > 100 and c[2] > 40 and c[1] < 20 for c in colors) < 2500, 'Blob must have a thick outline without a solid fill'
     assert sum(c[0] > 180 and c[1] > 180 and c[2] < 180 for c in colors) > 8, 'Face must remain visible inside the outline'
+    data = (destination / 'softbody-moderate-tilt.bmp').read_bytes()
+    offset = struct.unpack_from('<I', data, 10)[0]
+    rightmost = max(x for y in range(240) for x in range(240)
+                    if data[offset + ((239-y)*240+x)*4] > 100 and
+                    data[offset + ((239-y)*240+x)*4 + 2] > 40 and
+                    data[offset + ((239-y)*240+x)*4 + 1] < 20)
+    assert 190 <= rightmost < 225, 'Gentle default tilt should move Blob without pinning it to the rim'
     data = (destination / 'color-check.bmp').read_bytes()
     offset = struct.unpack_from('<I', data, 10)[0]
     index = offset + ((239 - 120) * 240 + 120) * 4

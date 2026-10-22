@@ -1,6 +1,8 @@
 #include "apps/blob_native/pages/page_manager.h"
 
 #include <Arduino.h>
+#include "apps/blob_native/blob/physics_settings.h"
+#include "apps/blob_native/pages/settings/settings_page.h"
 
 #include "apps/blob_native/lv_port/lv_port.h"
 #include "apps/blob_native/pages/blob/blob_page.h"
@@ -19,11 +21,15 @@ namespace blob_native
             Blob = 0,
             Timer,
             Brightness,
+            Settings,
         };
 
         Page g_page = Page::Blob;
         bool g_swipe_consumed = false;
         bool g_was_touching = false;
+        uint32_t g_press_ms=0;
+        int g_press_x=0,g_press_y=0;
+        bool g_press_moved=false;
 
         void navigate(const WaveshareNativeTouchSample &touch)
         {
@@ -33,8 +39,22 @@ namespace blob_native
                 (!touch.touching && touch.gesture == WaveshareNativeTouchGesture::None))
             {
                 g_swipe_consumed = false;
+                if(touch.touching) {
+                    g_press_ms=millis();g_press_x=touch.x;g_press_y=touch.y;g_press_moved=false;
+                }
             }
             g_was_touching = touch.touching;
+            const int dx=static_cast<int>(touch.x)-g_press_x,dy=static_cast<int>(touch.y)-g_press_y;
+            if(touch.touching && dx*dx+dy*dy>144) g_press_moved=true;
+            // Settings owns its sliders: horizontal drags must not navigate.
+            if(g_page==Page::Settings) return;
+            if(g_page==Page::Blob && touch.touching && !g_swipe_consumed && !g_press_moved &&
+               (millis()-g_press_ms>=650 || touch.gesture==WaveshareNativeTouchGesture::LongPress)) {
+                g_swipe_consumed=true;
+                lv_port_block_touch_until_release();
+                blob_page_hide();settings_page_show();g_page=Page::Settings;
+                return;
+            }
             if (g_swipe_consumed ||
                 (touch.gesture != WaveshareNativeTouchGesture::Left &&
                  touch.gesture != WaveshareNativeTouchGesture::Right))
@@ -74,6 +94,12 @@ namespace blob_native
 
     void page_manager_show_blob()
     {
+        if(g_page==Page::Settings) {
+            lv_port_block_touch_until_release();
+            blob_page_show();g_page=Page::Blob;
+            g_swipe_consumed=true;
+            return;
+        }
         if (g_page != Page::Timer)
         {
             return;
@@ -86,6 +112,9 @@ namespace blob_native
 
     void page_manager_init()
     {
+        physics_settings_reset();
+        physics_settings_load();
+        settings_page_init();
         blob_page_init();
         timer_page_init();
         brightness_page_init();

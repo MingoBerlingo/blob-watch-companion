@@ -1,3 +1,5 @@
+#include "apps/blob_native/blob/motion_response.h"
+#include "apps/blob_native/blob/physics_settings.h"
 #include "apps/blob_native/pages/blob/blob_page.h"
 
 #include <Arduino.h>
@@ -8,6 +10,7 @@
 
 #include "apps/blob_native/blob/face.h"
 #include "apps/blob_native/blob/shape.h"
+#include "apps/blob_native/blob/soft_body.h"
 #include "apps/blob_native/lv_port/lv_port.h"
 #include "apps/blob_native/shared_state.h"
 #include "platform/waveshare_native_board.h"
@@ -33,10 +36,16 @@ namespace blob_native
             float vel_y;
         };
 
+        MotionResponse g_motion{};
+
         BlobState g_state = {0.0f, CENTER_X, CENTER_Y, 0.0f, CENTER_X, CENTER_Y, 0.0f, 0.0f};
 
         int16_t g_px[POINTS];
         int16_t g_py[POINTS];
+
+        SoftBody g_soft_body{};
+        float g_face_x=FACE_DIR_X, g_face_y=FACE_DIR_Y;
+        uint32_t g_last_blob_ms = 0;
 
         lv_obj_t *g_screen = nullptr;
         lv_obj_t *g_blob_obj = nullptr;
@@ -102,6 +111,12 @@ namespace blob_native
             }
         }
 
+        void scale_face_point(float cx,float cy,float scale,int16_t *x,int16_t *y) {
+            if(scale==1) return;
+            *x=static_cast<int16_t>(lroundf(cx+(*x-cx)*scale));
+            *y=static_cast<int16_t>(lroundf(cy+(*y-cy)*scale));
+        }
+
         void draw_blob(lv_event_t *e)
         {
             lv_draw_ctx_t *ctx = lv_event_get_draw_ctx(e);
@@ -149,16 +164,21 @@ namespace blob_native
             // Keep facial details at their original stroke width.
             line_dsc.width = 1;
 
+            const float face_scale=BLOB_SOFT_BODY_ENABLED ? g_soft_body.rest_radius/BLOB_RADIUS:1;
+            const int eye_radius=static_cast<int>(fmaxf(1,lroundf(EYE_RADIUS*face_scale)));
             // Eyes.
             int16_t lx, ly, rx, ry;
-            compute_eye_positions(cx, cy, FACE_DIR_X, FACE_DIR_Y, speed, phase, &lx, &ly, &rx, &ry);
+            compute_eye_positions(cx, cy, g_face_x, g_face_y, speed, phase, &lx, &ly, &rx, &ry);
 
+            scale_face_point(cx,cy,face_scale,&lx,&ly);
+            scale_face_point(cx,cy,face_scale,&rx,&ry);
             const lv_color_t eye_c = lv_theme_get_color_secondary(g_screen);
             if (compute_blink_amount(speed, phase) > 0.4f)
             {
-                const int16_t half_lid = EYE_RADIUS + 1;
-                draw_segment(ctx, &line_dsc, (int16_t)(lx - half_lid), ly, (int16_t)(lx + half_lid), ly, eye_c);
-                draw_segment(ctx, &line_dsc, (int16_t)(rx - half_lid), ry, (int16_t)(rx + half_lid), ry, eye_c);
+                const int16_t half_lid = lroundf((EYE_RADIUS+1)*face_scale);
+                const int16_t side_x=(int16_t)(-g_face_y*half_lid), side_y=(int16_t)(g_face_x*half_lid);
+                draw_segment(ctx, &line_dsc, lx-side_x, ly-side_y, lx+side_x, ly+side_y, eye_c);
+                draw_segment(ctx, &line_dsc, rx-side_x, ry-side_y, rx+side_x, ry+side_y, eye_c);
             }
             else
             {
@@ -168,17 +188,20 @@ namespace blob_native
                 rect_dsc.bg_color = eye_c;
                 rect_dsc.radius = LV_RADIUS_CIRCLE;
 
-                lv_area_t a1 = {(lv_coord_t)(lx - EYE_RADIUS), (lv_coord_t)(ly - EYE_RADIUS),
-                                (lv_coord_t)(lx + EYE_RADIUS), (lv_coord_t)(ly + EYE_RADIUS)};
-                lv_area_t a2 = {(lv_coord_t)(rx - EYE_RADIUS), (lv_coord_t)(ry - EYE_RADIUS),
-                                (lv_coord_t)(rx + EYE_RADIUS), (lv_coord_t)(ry + EYE_RADIUS)};
+                lv_area_t a1 = {(lv_coord_t)(lx - eye_radius), (lv_coord_t)(ly - eye_radius),
+                                (lv_coord_t)(lx + eye_radius), (lv_coord_t)(ly + eye_radius)};
+                lv_area_t a2 = {(lv_coord_t)(rx - eye_radius), (lv_coord_t)(ry - eye_radius),
+                                (lv_coord_t)(rx + eye_radius), (lv_coord_t)(ry + eye_radius)};
                 lv_draw_rect(ctx, &rect_dsc, &a1);
                 lv_draw_rect(ctx, &rect_dsc, &a2);
             }
 
             // Mouth (neutral smile).
             int16_t mx0, my0, mxm, mym, mx1, my1;
-            compute_mouth_points(cx, cy, FACE_DIR_X, FACE_DIR_Y, speed, phase, &mx0, &my0, &mxm, &mym, &mx1, &my1);
+            compute_mouth_points(cx, cy, g_face_x, g_face_y, speed, phase, &mx0, &my0, &mxm, &mym, &mx1, &my1);
+            scale_face_point(cx,cy,face_scale,&mx0,&my0);
+            scale_face_point(cx,cy,face_scale,&mxm,&mym);
+            scale_face_point(cx,cy,face_scale,&mx1,&my1);
             const lv_color_t mouth_c = lv_theme_get_color_secondary(g_screen);
             draw_segment(ctx, &line_dsc, mx0, my0, mxm, mym, mouth_c);
             draw_segment(ctx, &line_dsc, mxm, mym, mx1, my1, mouth_c);
@@ -186,6 +209,38 @@ namespace blob_native
 
         void advance_blob()
         {
+            if (BLOB_SOFT_BODY_ENABLED)
+            {
+                const uint32_t now = millis();
+                const uint32_t elapsed = now - g_last_blob_ms;
+                g_last_blob_ms = now;
+                MotionOutput motion{};
+                WaveshareNativeMotionSample sample{};
+                if(BLOB_USE_IMU && waveshare_native_read_motion(&sample)) {
+                    const MotionInput input{sample.acceleration_x_g,sample.acceleration_y_g,sample.acceleration_z_g,
+                                            sample.gyro_x_dps,sample.gyro_y_dps,sample.gyro_z_dps};
+                    motion=motion_response_update(g_motion,input,elapsed);
+                }
+                // Tilt attracts toward the lowered edge. Gravity-subtracted
+                // acceleration follows the hand with the same input smoothing.
+                const float scale=physics_settings_get().tilt_sensitivity*(CENTER_X-g_soft_body.rest_radius-6.0f);
+                const float target_x=CENTER_X+motion.tilt_y*scale+motion.offset_x;
+                const float target_y=CENTER_Y-motion.tilt_x*scale+motion.offset_y;
+                soft_body_follow(g_soft_body,elapsed,target_x,target_y);
+                float cosine,sine;
+                soft_body_rotation(g_soft_body,&cosine,&sine);
+                g_face_x=cosine*FACE_DIR_X-sine*FACE_DIR_Y;
+                g_face_y=sine*FACE_DIR_X+cosine*FACE_DIR_Y;
+                g_state.cx = g_soft_body.center_x;
+                g_state.cy = g_soft_body.center_y;
+                // Existing face helpers expect roughly pixels per 16 ms frame.
+                g_state.speed = sqrtf(g_soft_body.velocity_x * g_soft_body.velocity_x +
+                                      g_soft_body.velocity_y * g_soft_body.velocity_y) * 0.016f;
+                g_state.t += (elapsed > 64 ? 64 : elapsed) * 0.005f;
+                soft_body_outline(g_soft_body, g_px, g_py, POINTS);
+                update_blob_bounds();
+                return;
+            }
             float cx = CENTER_X + cosf(g_state.t * 0.7f) * 24.0f;
             float cy = CENTER_Y + sinf(g_state.t * 0.9f) * 18.0f;
             float vx = cosf(g_state.t * 1.2f) * 0.8f;
@@ -233,7 +288,19 @@ namespace blob_native
             g_state.cx = CENTER_X;
             g_state.cy = CENTER_Y;
             g_state.speed = 0.0f;
-            compute_blob(CENTER_X, CENTER_Y, 0.0f, 0.0f, 0.0f, g_px, g_py);
+            g_last_blob_ms = millis();
+            g_motion={};
+            g_face_x=FACE_DIR_X; g_face_y=FACE_DIR_Y;
+            if (BLOB_SOFT_BODY_ENABLED)
+            {
+                soft_body_reset(g_soft_body, CENTER_X, CENTER_Y, physics_settings_get().blob_radius,
+                                CENTER_X - BLOB_OUTLINE_WIDTH - 2);
+                soft_body_outline(g_soft_body, g_px, g_py, POINTS);
+            }
+            else
+            {
+                compute_blob(CENTER_X, CENTER_Y, 0.0f, 0.0f, 0.0f, g_px, g_py);
+            }
         }
 
         void compute_point_bounds(const int16_t *px, const int16_t *py, int16_t *min_x, int16_t *min_y, int16_t *max_x, int16_t *max_y)

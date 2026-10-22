@@ -1,6 +1,7 @@
 #include "platform/waveshare_native_board.h"
 
 #include <Arduino.h>
+#include <EEPROM.h>
 
 #include "DEV_Config.h"
 #include "LCD_1in28.h"
@@ -99,20 +100,24 @@ void waveshare_native_flush_area(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
   LCD_1IN28_DisplayArea((UWORD)x0, (UWORD)y0, (UWORD)(x1 + 1), (UWORD)(y1 + 1), (UWORD *)pixels);
 }
 
+bool waveshare_native_read_motion(WaveshareNativeMotionSample *sample)
+{
+  if (sample == NULL) return false;
+  float acc[3] = {0}, gyro[3] = {0};
+  // This vendor driver is configured to return mg and degrees/second.
+  QMI8658_read_xyz(acc, gyro, nullptr);
+  *sample = {acc[0] / 1000.0f, acc[1] / 1000.0f, acc[2] / 1000.0f,
+             gyro[0], gyro[1], gyro[2]};
+  return true;
+}
+
 bool waveshare_native_read_tilt(float *tilt_x, float *tilt_y)
 {
-  if (tilt_x == NULL || tilt_y == NULL)
-  {
-    return false;
-  }
-
-  float acc[3] = {0};
-  float gyro[3] = {0};
-  unsigned int tim_count = 0;
-  QMI8658_read_xyz(acc, gyro, &tim_count);
-
-  *tilt_x = constrain(acc[0] / 1000.0f, -1.0f, 1.0f);
-  *tilt_y = constrain(acc[1] / 1000.0f, -1.0f, 1.0f);
+  if (tilt_x == NULL || tilt_y == NULL) return false;
+  WaveshareNativeMotionSample sample{};
+  if (!waveshare_native_read_motion(&sample)) return false;
+  *tilt_x = constrain(sample.acceleration_x_g, -1.0f, 1.0f);
+  *tilt_y = constrain(sample.acceleration_y_g, -1.0f, 1.0f);
   return true;
 }
 
@@ -155,4 +160,20 @@ bool waveshare_native_poll_touch(WaveshareNativeTouchSample *sample)
 
   return true;
 #endif
+}
+
+// EEPROM emulation writes flash only on an explicit settings Save.
+bool waveshare_native_load_settings(void *data,size_t size) {
+    if(!data || size>256) return false;
+    EEPROM.begin(256);
+    auto *bytes=static_cast<uint8_t*>(data);
+    for(size_t i=0;i<size;++i) bytes[i]=EEPROM.read(i);
+    return true;
+}
+bool waveshare_native_save_settings(const void *data,size_t size) {
+    if(!data || size>256) return false;
+    EEPROM.begin(256);
+    const auto *bytes=static_cast<const uint8_t*>(data);
+    for(size_t i=0;i<size;++i) EEPROM.write(i,bytes[i]);
+    return EEPROM.commit();
 }

@@ -187,3 +187,113 @@ The filled radius-50 Blob measured about 30–32 FPS on the board after startup,
 versus 34–36 FPS for the outline-only version. Motion changes the dirty area;
 these are indicative serial samples rather than identical motion recordings.
 The USB connection was manually unplugged after the filled sample, not a crash.
+
+## Local 2D soft-body prototype
+
+Branch `codex/local-softbody-prototype` contains the on-device experiment. The
+current body is an eight-spike star (16 particles, inner radius 78% of outer
+radius), drawn as a smooth 48-point, 2px outline. `BLOB_SOFT_BODY_ENABLED` selects
+it instead of the old procedural contour. No animated sine waves deform the body.
+
+The independently written physics uses particle/shape-matching concepts from
+[Lisyarus](https://lisyarus.github.io/blog/posts/soft-body-physics.html) and the
+[PICO-8 prototype](https://www.lexaloffle.com/bbs/?tid=141367). No cartridge code
+or assets were copied. Neighbour springs and best-fit rotational shape matching
+restore the rest shape after impacts; damping makes it settle. Collisions project
+particles inside the round bezel and change their velocity. The model has no exact
+volume constraint or general self-collision solver.
+
+### Current center control and rotation
+
+Movement separates tilt from translational acceleration using the full IMU:
+
+- Gyro propagation plus slow accelerometer correction estimates the gravity reference.
+- The working board/screen tilt axes remain (+Y, -X), attracting toward the lowered edge.
+- Gravity-subtracted acceleration moves the target in the same screen direction as the hand,
+  retaining the softened input without the opposite-direction inertial response.
+- Linear input has a soft 0.06g deadzone and a 70 ms exponential low-pass filter;
+  tilt has an 80 ms filter and a small 0.012g deadzone.
+- The movement target offset uses 100 px/g, is bounded, and decays after movement.
+  No acceleration is integrated into an ever-drifting position.
+
+The spring-like controller runs at fixed 8 ms steps with
+stiffness 2500/s² and damping 85/s, plus the existing air drag. runtime tilt sensitivity defaults to 1.5, keeping moderate viewing angles away from the rim. Its slider spans 0.5–5.0 in 0.1 steps. Target
+positions allow 10 px of overlap beyond the rigid-fit circular center region so the
+soft body can press against the wall and deform; control
+acceleration is capped at 24000 px/s² and center speed at 500 px/s. The response is
+therefore similar to the original behavior, not numerically identical. Internal
+deformation and contact forces are retained. Velocity stretches the contour goals
+along travel by up to 25%, with reciprocal perpendicular compression. The elastic
+outline therefore lags and recovers even without wall contact. Shape damping is
+8/s in free space, rising to 30/s within 4 px of the wall to prevent repeated
+fast impacts from folding the contour. Wall restitution remains 0.3. At most eight steps are processed
+per update, discarding excess time after a long stall.
+
+The best-fit particle rotation now also rotates the face's forward/side axes:
+eyes, mouth, and blinking eyelids all turn with the body. Contacts can rotate the
+body freely. Device yaw does not directly rotate it. Returning to the Blob page
+resets its state, matching the existing lifecycle.
+
+The active Blob path calls `waveshare_native_read_motion` and
+`motion_response_update`. Filters reset when returning to the Blob page. Physics
+settings retain their existing defaults and saved format; input smoothing does
+not modify saved slider values.
+
+### Preview and validation
+
+```sh
+cmake --build simulator/build-release --parallel
+./simulator/build-release/blob_simulator
+```
+
+W/X/A/D change accelerometer tilt; R returns to flat input. J/L inject short
+sideways accelerometer pulses. Arrows navigate; touch dragging remains reserved
+for the existing page navigation.
+
+```sh
+./simulator/build-release/blob_simulator --softbody-demo --output /tmp/blob-softbody
+ffmpeg -y -framerate 25 -i /tmp/blob-softbody/frame-%03d.bmp \
+  -filter_complex '[0:v]split[a][b];[a]palettegen[p];[b][p]paletteuse' \
+  /tmp/blob-softbody/softbody.gif
+```
+
+Persistent model state is 484 bytes, without heap allocation. Desktop timing cannot
+predict board FPS. Default firmware must compile, and hardware feel is checked on
+the user's board. Tests run locally; no GitHub CI or push is authorized by this
+experiment.
+
+Regression tests cover equilibrium, translation/rotation invariance, dent
+recovery, bounded physics under changing forces, controller response/settling/
+recentering, frame partition independence, repeated target changes at the rim,
+and 90-degree face geometry. The existing shared-page interactions, deterministic
+screenshots and timer/brightness/navigation tests remain enabled. The model is
+only validated for the current parameters; extreme stiffness, arbitrary obstacles
+or dragging would require more robust collision/topology handling.
+
+### Blob physics settings
+
+Hold a stationary finger on the Blob for about 650 ms to open settings. The
+opening touch is consumed until release. Prev/Next switch between Follow, Shape,
+Motion, Edge and Size; slider drags do not trigger normal page navigation. Back returns
+to the Blob with the current values active. Shape selection remains unchanged. Size scales the outline and face from 60% to
+160% (100% is the previous size). Save also persists size; version 1 records
+retain their eight existing values and receive 100% size on migration.
+
+- Follow speed adjusts target spring stiffness; Follow damping controls overshoot.
+- Stiffness and Shape damping control deformation and recovery.
+- Tilt sensitivity scales the target position; Bounce controls wall restitution.
+- Wall friction slows sliding along the bezel; Max speed caps center translation.
+
+Reset restores this build's defaults in RAM. Save explicitly writes the current
+settings to the board's EEPROM-emulated flash, with a format version and checksum.
+Without Save, edits last until reboot. Missing/corrupt/incompatible records fall
+back to defaults. The desktop adapter keeps Save data in memory for the current
+simulator process; flash persistence is implemented by the hardware adapter.
+
+The menu uses bounded controls, including a 500 px/s maximum speed (scaled down for smaller bodies); deformation
+near the rim retains its extra contact damping. A local regression checks all
+512 combinations of control endpoints under repeated impacts. This verifies
+those cases, rather than guaranteeing every possible physical input sequence.
+
+Smaller bodies also reduce the acceleration cap, wall overlap and velocity-driven
+stretch to avoid folding at the smallest size. Default-size physics is unchanged.

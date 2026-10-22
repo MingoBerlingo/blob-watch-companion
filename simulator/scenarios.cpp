@@ -8,6 +8,7 @@
 #include "Arduino.h"
 #include "lvgl.h"
 #include "apps/blob_native/timer/view.h"
+#include "apps/blob_native/blob/physics_settings.h"
 
 namespace simulator {
 namespace {
@@ -302,6 +303,85 @@ bool run_scenarios(const std::filesystem::path &output)
     expect(!timer_running(), "Held swipe and release cannot activate destination Play button");
     click(120, 164);
     expect(timer_running(), "Fresh tap works immediately after swipe release");
+    // Exercise the physical contour through the same tilt adapter used by IMU.
+    swipe(Gesture::Right);
+    set_tilt(-0.6f, 0.8f);
+    step(1600);
+    capture("softbody-rim");
+    expect(lv_scr_act() == blob_screen, "Tilt deforms Blob without changing pages");
+    set_tilt(0.7f, -0.7f);
+    step(400);
+    capture("softbody-rebound");
+    set_tilt(0, 0);
+    step(2000);
+    capture("softbody-settled");
+    set_tilt(0, 0.14f);
+    step(96);
+    capture("softbody-cursor-follow");
+    set_tilt(0, 0);
+    step(2000);
+    set_tilt(0, 0.35f); // About twenty degrees: ordinary use, not a vertical screen.
+    step(800);
+    capture("softbody-moderate-tilt");
+    set_tilt(0, 0);
+    step(2000);
+    auto *contour=lv_obj_get_child(blob_screen,0);
+    const int neutral_x=lv_obj_get_x(contour);
+    for(int i=0;i<40;++i) { shake(0,i%2 ? 0.03f:-0.03f);step(16); }
+    expect(std::abs(lv_obj_get_x(contour)-neutral_x)<=2,"Small simulated tremor leaves Blob steady");
+    shake(0,0.8f);step(96);
+    expect(lv_obj_get_x(contour)>neutral_x+5,"Sideways movement follows the hand with smoothing");
+    capture("softbody-softened-movement");
+    step(1500);
+    set_touch({true,120,120,WaveshareNativeTouchGesture::None});
+    step(800);
+    expect(find(lv_scr_act(), &lv_label_class, "Follow") != nullptr,
+           "Long press opens Blob physics settings");
+    release();
+    expect(physics_settings_value(0)==2500,"Opening settings does not change physics");
+    set_touch({true,70,100,WaveshareNativeTouchGesture::None});step(40);
+    set_touch({true,193,100,WaveshareNativeTouchGesture::Left});step(100);
+    release();
+    expect(find(lv_scr_act(), &lv_label_class, "Follow")!=nullptr && physics_settings_value(0)==3500,
+           "Horizontal settings drag changes physics without navigating away");
+    button("Save");
+    expect(find(lv_scr_act(), &lv_label_class, "Saved  1/5")!=nullptr,"Save confirms persistence");
+    physics_settings_reset();
+    expect(physics_settings_load() && physics_settings_value(0)==3500,"Saved slider value reloads");
+    capture("settings-follow");
+    button("Next");
+    capture("settings-shape");
+    button("Next");
+    capture("settings-motion");
+    button("Next");
+    capture("settings-edge");
+    button("Next");
+    capture("settings-size");
+    auto *size_slider=widget(&lv_slider_class);
+    lv_slider_set_value(size_slider,160,LV_ANIM_OFF);
+    lv_event_send(size_slider,LV_EVENT_VALUE_CHANGED,nullptr);
+    expect(physics_settings_value(8)==160,"Size slider updates the overall Blob scale");
+    button("Save");
+    button("Back");
+    step(400);
+    capture("blob-large");
+    expect(lv_obj_get_width(lv_obj_get_child(blob_screen,0))>150,"Returning to Blob applies the larger outline");
+    set_touch({true,120,120,WaveshareNativeTouchGesture::None});step(800);release();
+
+    for(int page=0;page<4;++page) button("Next");
+    size_slider=widget(&lv_slider_class);
+    lv_slider_set_value(size_slider,60,LV_ANIM_OFF);
+    lv_event_send(size_slider,LV_EVENT_VALUE_CHANGED,nullptr);
+    button("Back");step(400);
+    capture("blob-small");
+    expect(lv_obj_get_width(lv_obj_get_child(blob_screen,0))<70,"Size slider also scales Blob down");
+    set_touch({true,120,120,WaveshareNativeTouchGesture::None});step(800);release();
+    button("Reset");
+    expect(physics_settings_value(0)==2500 && physics_settings_value(4)==15,
+           "Reset restores defaults across settings pages");
+    button("Save");
+    button("Back");
+    expect(lv_scr_act()==blob_screen, "Settings Back returns to Blob");
     std::ofstream report(output / "report.json");
     report << "{\"passed\":" << passed << ",\"failed\":" << failures.size() << ",\"failures\":[";
     for (size_t i = 0; i < failures.size(); ++i) report << (i ? "," : "") << '"' << failures[i] << '"';

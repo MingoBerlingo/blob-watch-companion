@@ -36,6 +36,9 @@ namespace blob_native
 
     // Respond to IMU tilt.
     constexpr bool BLOB_USE_IMU = true;
+    // Local prototype: a physical contour instead of procedural sine waves.
+    constexpr bool BLOB_SOFT_BODY_ENABLED = true;
+    constexpr float BLOB_TILT_SENSITIVITY = 1.5f; // Gentle default tilt influence.
 
     // Glow styling (disabled by default for a crisper, faster outline).
     constexpr bool BLOB_GLOW_ENABLED = false;
@@ -58,7 +61,7 @@ namespace blob_native
     constexpr float MOUTH_HALF_LEN = BLOB_RADIUS * 0.16f;
     constexpr float MOUTH_SMILE_DEPTH = BLOB_RADIUS * 0.05f;
 
-    // Face is locked to a fixed orientation (no rotation with motion).
+    // Rest orientation; the soft-body page rotates this basis with its particles.
     constexpr float FACE_DIR_X = 0.0f;
     constexpr float FACE_DIR_Y = -1.0f;
 

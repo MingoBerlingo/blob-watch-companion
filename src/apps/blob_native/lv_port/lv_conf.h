@@ -28,7 +28,8 @@
  *=========================*/
 #define LV_MEM_CUSTOM 0
 #if LV_MEM_CUSTOM == 0
-#define LV_MEM_SIZE (24U * 1024U)
+/* Four persistent screens, including physics controls and timer overlays. */
+#define LV_MEM_SIZE (40U * 1024U)
 #define LV_MEM_ADR 0
 #if LV_MEM_ADR == 0
 #undef LV_MEM_POOL_INCLUDE
