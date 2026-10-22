@@ -65,3 +65,10 @@ Only update `simulator/tests/visual-baselines.json` and its PNG references after
 reviewing an intentional UI change; ordinary test runs must not update them.
 See `simulator/README.md` for dependencies, controls, and explicit baseline updates.
 Firmware validation with `pio run` is still required.
+
+## Local Tests Only
+
+Run tests locally. Do not trigger, re-run, enable, or use GitHub Actions/CI for
+validation unless the user explicitly requests it. Preserve manual-only workflow
+triggers; push and pull-request activity must not start paid/minute-consuming CI.
+Use the desktop simulator and local containers for cross-platform checks.

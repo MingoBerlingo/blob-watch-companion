@@ -45,3 +45,5 @@
 - Published branch codex/timer-running-controls and opened PR #4 targeting feat--timer. GitHub Actions runs the same integration/visual checks remotely.
 
 - CI follow-up: all 43 behavior checks passed on Linux, but 64 ring pixels differed due to host libm half-pixel rounding. Replaced floating-point ring geometry with LVGL integer sine interpolation/projection; re-inspected ring references, reran local tests, and obtained a second independent review with no material findings. Increased the time formatting buffer to 16 bytes for GCC range diagnostics.
+
+- User preference: tests must run locally, with no GitHub CI minute consumption. Disabled the workflow, cancelled active runs and changed its triggers to manual-only; recorded the policy in AGENTS.md. Further cross-platform validation uses local containers only.

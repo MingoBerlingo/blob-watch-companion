@@ -89,9 +89,10 @@ ctest --test-dir simulator/build --output-on-failure
 
 Review and commit `simulator/tests/visual-baselines.json` and
 `simulator/tests/baselines/*.png` with the UI change. Ordinary test runs never
-update baselines. GitHub Actions builds on Linux, runs the same checks, and
-retains captures/reports as the `simulator-screenshots` artifact, including on
-failure. Inspect any platform-specific pixel differences before accepting them.
+update baselines. Tests run locally by default. The optional GitHub Actions workflow is manual-only
+and disabled in the repository; do not enable or run it without an explicit user
+request. Pushes and pull requests must not consume Actions minutes. Use a local
+Linux container for cross-platform checks when needed.
 
 ## Firmware validation and limits
 
