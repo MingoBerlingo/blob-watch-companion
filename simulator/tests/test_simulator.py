@@ -46,10 +46,10 @@ def run(destination):
     data = (destination / 'blob.bmp').read_bytes()
     offset = struct.unpack_from('<I', data, 10)[0]
     center = offset + ((239 - 120) * 240 + 120) * 4
-    assert data[center:center + 3] == bytes((255, 0, 123)), 'Blob interior must have the solid accent fill'
+    assert data[center:center + 3] == bytes((0, 0, 0)), 'Outline Blob must keep a black interior'
     colors = [data[i:i + 3] for i in range(offset, offset + 240 * 240 * 4, 4)]
-    assert colors.count(bytes((255, 0, 123))) > 5000, 'Filled Blob must cover its interior'
-    assert sum(c[0] > 180 and c[1] > 180 and c[2] < 180 for c in colors) > 8, 'Face must remain visible over the fill'
+    assert 550 < sum(c[0] > 100 and c[2] > 40 and c[1] < 20 for c in colors) < 2500, 'Blob must have a thick outline without a solid fill'
+    assert sum(c[0] > 180 and c[1] > 180 and c[2] < 180 for c in colors) > 8, 'Face must remain visible inside the outline'
     data = (destination / 'color-check.bmp').read_bytes()
     offset = struct.unpack_from('<I', data, 10)[0]
     index = offset + ((239 - 120) * 240 + 120) * 4

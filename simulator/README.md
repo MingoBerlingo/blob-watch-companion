@@ -110,7 +110,9 @@ by `BLOB_DESKTOP_SIMULATOR`, so PlatformIO continues to use the native adapter.
 
 Branch `codex/local-larger-blob` starts from the timer merge. Radius is 50 px
 (previously 25 px), with contour wave amplitudes doubled. Face spacing scales
-with the radius. The 48-point outline and 16 ms animation timer are unchanged.
+with the radius. The current default is outline-only (`BLOB_FILL_ENABLED = false`)
+with a 2 px contour (`BLOB_OUTLINE_WIDTH`); facial strokes remain 1 px. The
+48-point contour and 16 ms animation timer are unchanged.
 
 Run the interactive preview after saving edits:
 

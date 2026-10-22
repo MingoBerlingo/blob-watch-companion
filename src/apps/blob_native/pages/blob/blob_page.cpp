@@ -139,11 +139,15 @@ namespace blob_native
             // Outline.
             const lv_color_t outline = lv_theme_get_color_primary(g_screen);
             if (BLOB_FILL_ENABLED) draw_fill(ctx, outline);
+            line_dsc.width = BLOB_OUTLINE_WIDTH;
             for (int i = 0; i < POINTS; i++)
             {
                 const int next = (i + 1) % POINTS;
                 draw_segment(ctx, &line_dsc, g_px[i], g_py[i], g_px[next], g_py[next], outline);
             }
+
+            // Keep facial details at their original stroke width.
+            line_dsc.width = 1;
 
             // Eyes.
             int16_t lx, ly, rx, ry;
