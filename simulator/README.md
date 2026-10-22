@@ -243,7 +243,7 @@ The model stores 480 bytes (previously 704 with 24 particles), with no heap
 allocation. On this Mac, 100,000 fixed steps take roughly 10–15 ms in Release; this is not RP2040 timing or animation FPS.
 Steady tilt gravity is 300 px/s². Gyro-derived orientation sets its direction;
 only accelerometer residuals generate the stronger movement impulses. The star valleys use
-62% of the outer radius and the top tip starts upright.
+78% of the outer radius and the top tip starts upright.
 Device FPS must be measured separately before calling this performance-ready.
 
 Local regressions cover rest equilibrium, rotation/translation invariance, dent
@@ -284,3 +284,10 @@ translation, reject small sensor noise/non-finite readings, compare frame rates,
 and stress repeated bounded impulses. The simulator synthesizes gyro rates from
 its tilt changes; its J/L pulses add transient accelerometer input. These are
 behavior tests, not a reproduction of the hardware sensor's filtering/noise.
+
+Gravity polarity correction: the estimator follows the accelerometer's support
+vector, so exported downhill tilt is its negative. Only that gravity output is
+inverted; the unmodified reference remains in accelerometer subtraction. A
+regression checks a known 30-degree roll yields the opposite physical gravity
+component without changing shake impulses. The eight-spike star's inner radius
+is now 78% of its outer radius.

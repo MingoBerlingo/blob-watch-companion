@@ -10,7 +10,7 @@ namespace blob_native
     }
     MotionOutput motion_response_update(MotionResponse &state, const MotionInput &in, uint32_t elapsed_ms)
     {
-        MotionOutput out{state.gravity_x, state.gravity_y, 0, 0};
+        MotionOutput out{-state.gravity_x, -state.gravity_y, 0, 0};
         if (!isfinite(in.acceleration_x_g) || !isfinite(in.acceleration_y_g) || !isfinite(in.acceleration_z_g) ||
             !isfinite(in.gyro_x_dps) || !isfinite(in.gyro_y_dps) || !isfinite(in.gyro_z_dps)) return out;
         const float ax=in.acceleration_x_g, ay=in.acceleration_y_g, az=in.acceleration_z_g;
@@ -20,7 +20,7 @@ namespace blob_native
             if (norm < 0.5f || norm > 1.5f) return out;
             state.gravity_x=ax/norm; state.gravity_y=ay/norm; state.gravity_z=az/norm;
             state.ready=true;
-            return {state.gravity_x,state.gravity_y,0,0};
+            return {-state.gravity_x,-state.gravity_y,0,0};
         }
         const float dt=(elapsed_ms>64 ? 64:elapsed_ms)/1000.0f;
         if (dt<=0) return out;
@@ -53,7 +53,9 @@ namespace blob_native
         float linear_x=ax-state.gravity_x, linear_y=ay-state.gravity_y;
         if (fabsf(linear_x)<kLinearDeadband) linear_x=0;
         if (fabsf(linear_y)<kLinearDeadband) linear_y=0;
-        out.tilt_x=state.gravity_x; out.tilt_y=state.gravity_y;
+        // Accelerometer support acceleration points opposite physical gravity.
+        // Negate only the exported tilt; keep the reference for shake subtraction.
+        out.tilt_x=-state.gravity_x; out.tilt_y=-state.gravity_y;
         out.kick_x=-kShakeAccelerationGain*linear_y*dt;
         out.kick_y=kShakeAccelerationGain*linear_x*dt;
         return out;

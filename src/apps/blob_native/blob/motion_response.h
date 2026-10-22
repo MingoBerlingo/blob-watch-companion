@@ -15,7 +15,7 @@ namespace blob_native
     };
     struct MotionOutput
     {
-        float tilt_x, tilt_y;
+        float tilt_x, tilt_y; // physical downhill direction, opposite support acceleration
         float kick_x, kick_y; // screen pixels/second added to center velocity
     };
     MotionOutput motion_response_update(MotionResponse &state, const MotionInput &input, uint32_t elapsed_ms);

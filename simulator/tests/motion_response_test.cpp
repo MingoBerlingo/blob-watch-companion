@@ -34,7 +34,7 @@ int main() {
         held_kick+=std::fabs(result.kick_x);
     }
     check(held_kick<10, "Holding the new tilt does not repeatedly boost velocity");
-    check(std::fabs(result.tilt_y-0.5f)<0.02f, "Gravity direction follows the tilt without a gravity multiplier");
+    check(std::fabs(result.tilt_y+0.5f)<0.02f, "Physical gravity opposes the accelerometer support vector");
 
     state={};sample={0,0,1,0,0,0};motion_response_update(state,sample,20);
     sample.acceleration_y_g=0.8f;

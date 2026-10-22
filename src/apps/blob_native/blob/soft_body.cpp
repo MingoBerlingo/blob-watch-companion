@@ -131,7 +131,7 @@ namespace blob_native
         {
             // Eight tips and eight valleys. Start with a tip pointing upward.
             const float angle = -kPi * 0.5f + 2 * kPi * i / SOFT_BODY_POINTS;
-            const float point_radius = (i % 2 == 0) ? radius : radius * 0.62f;
+            const float point_radius = (i % 2 == 0) ? radius : radius * 0.78f;
             body.rest_x[i] = point_radius * cosf(angle);
             body.rest_y[i] = point_radius * sinf(angle);
             body.points[i] = {center_x + body.rest_x[i], center_y + body.rest_y[i], 0, 0};

@@ -63,7 +63,7 @@ int main() {
         const float r=std::hypot(body.rest_x[i], body.rest_y[i]);
         shortest=std::fmin(shortest,r); longest=std::fmax(longest,r);
     }
-    check(longest > shortest * 1.4f, "Rest shape has distinct star tips and valleys");
+    check(shortest > longest*0.75f && shortest < longest*0.85f, "Star has a larger inner radius while retaining visible valleys");
     auto response = body, previous_response = body;
     for (int i=0; i<12; ++i) {
         soft_body_update(response, 8, BLOB_SOFT_BODY_ACCELERATION, 0);
