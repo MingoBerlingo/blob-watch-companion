@@ -140,4 +140,34 @@ per frame at radius 25 versus 14,712 at radius 50 (3.17× the RGB565 transfer da
 Desktop end-to-end timings do not establish a speedup and are too small/noisy to
 predict the board's performance. The simulator uses a synthetic clock, SDL instead
 of SPI, and the Mac CPU instead of RP2040; real frame rate needs a board measurement.
-The experiment has not been flashed or pushed.
+The experiment remains unpushed; it has now been flashed and measured on the board.
+
+### Device transfer measurements
+
+The installed RP2040 SPI library's `transfer(buffer, length)` overload exchanges
+bytes individually and overwrites the source with received data. The bulk
+`transfer(buffer, nullptr, length)` overload uses transmit-only block writes.
+`LCD_1IN28_DisplayArea` now sends each tightly packed rectangular region as one
+block, rather than one call per row. The SPI clock remains unchanged.
+
+At radius 50, 9-second serial samples on the connected board measured:
+
+| Transfer path | Rendered FPS | SPI ms per frame |
+| --- | --- | --- |
+| Original byte-wise transfer | 15–16 | 46–49 |
+| Bulk transmit-only transfer | 34–36 | about 12 |
+
+These are on-device LVGL refresh measurements, not desktop extrapolations.
+Tilt/contour phase change the dirty area slightly between samples. DMA was also
+tried and removed because it did not measurably improve this workload. Normal
+firmware builds do not print diagnostics. To repeat the measurement, keep the Blob
+page visible and run locally:
+
+```sh
+pio run -e waveshare_rp2040_touch_lcd_perf -t upload
+pio device monitor -b 115200
+```
+
+The optional diagnostics print rendered FPS, average LVGL refresh time, average
+SPI flush time, and pixels per frame once per second. Use `pio run -t upload` to
+restore the normal build without diagnostics.

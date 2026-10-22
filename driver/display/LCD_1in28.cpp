@@ -466,15 +466,11 @@ void LCD_1IN28_DisplayWindows(UWORD Xstart, UWORD Ystart, UWORD Xend, UWORD Yend
 
 void LCD_1IN28_DisplayArea(UWORD Xstart, UWORD Ystart, UWORD Xend, UWORD Yend, UWORD *Image)
 {
-	UWORD j;
-	const UWORD width = Xend - Xstart;
-
-	LCD_1IN28_SetWindows(Xstart, Ystart, Xend, Yend);
-	DEV_Digital_Write(LCD_DC_PIN, 1);
-	for (j = 0; j < (Yend - Ystart); j++)
-	{
-		DEV_SPI_Write_nByte((uint8_t *)&Image[j * width], width * 2);
-	}
+    const uint32_t bytes = (uint32_t)(Xend - Xstart) * (Yend - Ystart) * 2u;
+    LCD_1IN28_SetWindows(Xstart, Ystart, Xend, Yend);
+    DEV_Digital_Write(LCD_DC_PIN, 1);
+    // LVGL supplies a tightly packed rectangular buffer. Send it in one block.
+    DEV_SPI_Write_nByte((uint8_t *)Image, bytes);
 }
 
 void LCD_1IN28_DisplayPoint(UWORD X, UWORD Y, UWORD Color)

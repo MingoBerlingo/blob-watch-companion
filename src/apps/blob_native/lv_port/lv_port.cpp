@@ -20,12 +20,44 @@ namespace blob_native
         lv_indev_t *g_indev = nullptr;
         bool g_touch_blocked = false;
 
+#if defined(BLOB_PERF_SERIAL)
+        uint32_t g_perf_start = 0, g_perf_frames = 0;
+        uint32_t g_perf_render_ms = 0, g_perf_flush_us = 0, g_perf_pixels = 0;
+
+        void monitor_cb(lv_disp_drv_t *, uint32_t render_ms, uint32_t pixels)
+        {
+            const uint32_t now = millis();
+            if (!g_perf_start) g_perf_start = now;
+            ++g_perf_frames;
+            g_perf_render_ms += render_ms;
+            g_perf_pixels += pixels;
+            const uint32_t elapsed = now - g_perf_start;
+            if (elapsed >= 1000)
+            {
+                if (Serial)
+                    Serial.printf("BLOB PERF fps=%.1f render_ms=%.2f spi_ms=%.2f pixels=%lu\n",
+                                  g_perf_frames * 1000.0f / elapsed,
+                                  (float)g_perf_render_ms / g_perf_frames,
+                                  g_perf_flush_us / (1000.0f * g_perf_frames),
+                                  (unsigned long)(g_perf_pixels / g_perf_frames));
+                g_perf_start = now;
+                g_perf_frames = g_perf_render_ms = g_perf_flush_us = g_perf_pixels = 0;
+            }
+        }
+#endif
+
         void flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p)
         {
             // LV_COLOR_16_SWAP already stores the pixels in the panel's
             // byte-swapped RGB565 order, so LVGL's buffer can be written
             // straight to the LCD over SPI (no intermediate framebuffer).
+#if defined(BLOB_PERF_SERIAL)
+            const uint32_t started = micros();
+#endif
             waveshare_native_flush_area(area->x1, area->y1, area->x2, area->y2, (const uint16_t *)color_p);
+#if defined(BLOB_PERF_SERIAL)
+            g_perf_flush_us += micros() - started;
+#endif
             lv_disp_flush_ready(drv);
         }
 
@@ -64,6 +96,9 @@ namespace blob_native
         g_disp_drv.hor_res = SCREEN_W;
         g_disp_drv.ver_res = SCREEN_H;
         g_disp_drv.flush_cb = flush_cb;
+#if defined(BLOB_PERF_SERIAL)
+        g_disp_drv.monitor_cb = monitor_cb;
+#endif
         g_disp_drv.draw_buf = &g_draw_buf;
         lv_disp_drv_register(&g_disp_drv);
 
