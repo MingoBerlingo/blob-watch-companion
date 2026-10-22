@@ -7,6 +7,7 @@ namespace simulator {
 constexpr int width = 240;
 constexpr int height = 240;
 void init(bool headless);
+void benchmark_blob();
 void shutdown();
 void advance(uint32_t milliseconds);
 void step(uint32_t milliseconds = 10);

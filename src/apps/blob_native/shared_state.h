@@ -13,13 +13,13 @@ namespace blob_native
     constexpr int SCREEN_H = 240;
     constexpr float CENTER_X = SCREEN_W / 2.0f;
     constexpr float CENTER_Y = SCREEN_H / 2.0f;
-    constexpr float BLOB_RADIUS = 25.0f;
+    constexpr float BLOB_RADIUS = 50.0f;
     constexpr int POINTS = 48;
 
     // Blob contour wave amplitudes (main body curvature tuning).
-    constexpr float BLOB_WAVE_AMP_1 = 2.1f;
-    constexpr float BLOB_WAVE_AMP_2 = 1.8f;
-    constexpr float BLOB_WAVE_AMP_3 = 1.5f;
+    constexpr float BLOB_WAVE_AMP_1 = 4.2f;
+    constexpr float BLOB_WAVE_AMP_2 = 3.6f;
+    constexpr float BLOB_WAVE_AMP_3 = 3.0f;
 
     // Background color (RGB565). Accents come from the LVGL theme.
     constexpr uint16_t BG_COLOR = BLACK;

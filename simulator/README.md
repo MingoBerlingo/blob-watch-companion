@@ -105,3 +105,39 @@ The only desktop replacements for headers are the small `Arduino.h` clock/math
 shim and the `GUI_Paint.h` RGB565 black constant used by shared UI configuration.
 Hardware-facing implementation lives in `src/platform/desktop/` and is guarded
 by `BLOB_DESKTOP_SIMULATOR`, so PlatformIO continues to use the native adapter.
+
+## Local larger-Blob experiment
+
+Branch `codex/local-larger-blob` starts from the timer merge. Radius is 50 px
+(previously 25 px), with contour wave amplitudes doubled. Face spacing scales
+with the radius. The 48-point outline and 16 ms animation timer are unchanged.
+
+Run the interactive preview after saving edits:
+
+```sh
+cmake --build simulator/build-release --parallel
+./simulator/build-release/blob_simulator
+```
+
+Local measurements (Release build):
+
+```sh
+./simulator/build-release/blob_shape_benchmark
+./simulator/build-release/blob_simulator --benchmark
+```
+
+The shape benchmark compares 20,000 varied phases/velocities with the original
+formula (maximum permitted coordinate deviation: 1 pixel from floating-point
+rounding), then times 100,000 contours. The optimized implementation caches
+angular samples and computes six phase-dependent sine/cosine values per contour;
+velocity projection replaces atan2 and radial cosine calls. Cache storage costs
+about 1.5 KiB of RAM. First-call setup is excluded from the timing comparison.
+
+On this Mac, the contour calculation measured roughly 14–16× faster. This is
+**only the contour calculation**, not total animation FPS. Display monitor counts
+for 10 simulated seconds were 500 rendered frames in each case: about 4,646 pixels
+per frame at radius 25 versus 14,712 at radius 50 (3.17× the RGB565 transfer data).
+Desktop end-to-end timings do not establish a speedup and are too small/noisy to
+predict the board's performance. The simulator uses a synthetic clock, SDL instead
+of SPI, and the Mac CPU instead of RP2040; real frame rate needs a board measurement.
+The experiment has not been flashed or pushed.

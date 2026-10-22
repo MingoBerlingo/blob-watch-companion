@@ -31,7 +31,7 @@ target_compile_definitions(lvgl_sim PUBLIC LV_CONF_INCLUDE_SIMPLE)
 target_include_directories(lvgl_sim PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/compat" "${APP}/lv_port" "${LVGL_SOURCE_DIR}")
 add_executable(blob_simulator
-    main.cpp runtime.cpp scenarios.cpp
+    main.cpp runtime.cpp scenarios.cpp blob_benchmark.cpp
     "${APP_ROOT}/platform/desktop/waveshare_desktop_board.cpp"
     "${APP}/lv_port/lv_port.cpp" "${APP}/lv_port/theme.cpp"
     "${APP}/pages/page_manager.cpp" "${APP}/pages/blob/blob_page.cpp"
@@ -52,3 +52,7 @@ add_test(NAME navigation_regression COMMAND "${Python3_EXECUTABLE}"
 
 add_test(NAME timer_logic_regression COMMAND "${Python3_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_timer_logic.py")
+
+add_executable(blob_shape_benchmark tests/blob_shape_benchmark.cpp "${APP}/blob/shape.cpp")
+target_include_directories(blob_shape_benchmark PRIVATE "${APP_ROOT}" "${CMAKE_CURRENT_SOURCE_DIR}/compat")
+add_test(NAME blob_shape_regression COMMAND blob_shape_benchmark)
