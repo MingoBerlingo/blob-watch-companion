@@ -171,3 +171,17 @@ pio device monitor -b 115200
 The optional diagnostics print rendered FPS, average LVGL refresh time, average
 SPI flush time, and pixels per frame once per second. Use `pio run -t upload` to
 restore the normal build without diagnostics.
+
+### Solid fill experiment
+
+`BLOB_FILL_ENABLED` in `shared_state.h` enables a solid fill using the existing
+primary accent (violet); the face retains the secondary accent (cyan). The fill
+uses sorted scanline intersections so concave waves render correctly without
+LVGL's convex-only polygon restriction. It draws only rows in the current clip
+and uses stack storage, with no extra framebuffer. Set the flag to `false` for
+the outline-only comparison.
+
+The filled radius-50 Blob measured about 30–32 FPS on the board after startup,
+versus 34–36 FPS for the outline-only version. Motion changes the dirty area;
+these are indicative serial samples rather than identical motion recordings.
+The USB connection was manually unplugged after the filled sample, not a crash.

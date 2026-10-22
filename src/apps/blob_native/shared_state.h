@@ -38,6 +38,7 @@ namespace blob_native
 
     // Glow styling (disabled by default for a crisper, faster outline).
     constexpr bool BLOB_GLOW_ENABLED = false;
+    constexpr bool BLOB_FILL_ENABLED = true; // Solid fill reuses the theme primary.
     constexpr int GLOW_LAYER_COUNT = 3;
     constexpr float GLOW_LAYER_SCALE[GLOW_LAYER_COUNT] = {1.3f, 1.2f, 1.1f};
     constexpr uint16_t GLOW_LAYER_COLOR[GLOW_LAYER_COUNT] = {0x4008, 0x8010, 0xC018};

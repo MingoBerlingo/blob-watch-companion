@@ -61,6 +61,47 @@ namespace blob_native
             lv_draw_line(ctx, dsc, &p1, &p2);
         }
 
+        void draw_fill(lv_draw_ctx_t *ctx, lv_color_t color)
+        {
+            // The wavy contour can be concave; LVGL's polygon primitive only
+            // supports convex shapes. Fill sorted edge pairs one scanline at
+            // a time, limited to this draw buffer's clip (no heap or triangles).
+            lv_draw_rect_dsc_t span;
+            lv_draw_rect_dsc_init(&span);
+            span.bg_color = color;
+            span.bg_opa = LV_OPA_COVER;
+            for (int16_t y = ctx->clip_area->y1; y <= ctx->clip_area->y2; ++y)
+            {
+                int32_t intersections[POINTS];
+                int count = 0;
+                for (int i = 0, previous = POINTS - 1; i < POINTS; previous = i++)
+                {
+                    const int16_t ay = g_py[previous], by = g_py[i];
+                    // Half-open edges count a shared vertex only once.
+                    if (!((ay <= y && by > y) || (by <= y && ay > y))) continue;
+                    const int32_t x = g_px[previous] * 256 +
+                        (int32_t)(y - ay) * (g_px[i] - g_px[previous]) * 256 / (by - ay);
+                    int position = count;
+                    while (position > 0 && intersections[position - 1] > x)
+                    {
+                        intersections[position] = intersections[position - 1];
+                        --position;
+                    }
+                    intersections[position] = x;
+                    ++count;
+                }
+                for (int i = 0; i + 1 < count; i += 2)
+                {
+                    const int32_t left = intersections[i] < 0 ? 0 : intersections[i];
+                    const lv_coord_t x1 = (left + 255) / 256;
+                    const lv_coord_t x2 = intersections[i + 1] / 256;
+                    if (x1 > x2) continue;
+                    lv_area_t row = {x1, y, x2, y};
+                    lv_draw_rect(ctx, &span, &row);
+                }
+            }
+        }
+
         void draw_blob(lv_event_t *e)
         {
             lv_draw_ctx_t *ctx = lv_event_get_draw_ctx(e);
@@ -97,6 +138,7 @@ namespace blob_native
 
             // Outline.
             const lv_color_t outline = lv_theme_get_color_primary(g_screen);
+            if (BLOB_FILL_ENABLED) draw_fill(ctx, outline);
             for (int i = 0; i < POINTS; i++)
             {
                 const int next = (i + 1) % POINTS;

@@ -43,6 +43,13 @@ def run(destination):
         # A 32-bit SDL BMP encodes the round bezel in the exported pixels too.
         assert pixels[:3] == bytes((24, 24, 24)), name
         assert len(set(pixels)) > 8, name
+    data = (destination / 'blob.bmp').read_bytes()
+    offset = struct.unpack_from('<I', data, 10)[0]
+    center = offset + ((239 - 120) * 240 + 120) * 4
+    assert data[center:center + 3] == bytes((255, 0, 123)), 'Blob interior must have the solid accent fill'
+    colors = [data[i:i + 3] for i in range(offset, offset + 240 * 240 * 4, 4)]
+    assert colors.count(bytes((255, 0, 123))) > 5000, 'Filled Blob must cover its interior'
+    assert sum(c[0] > 180 and c[1] > 180 and c[2] < 180 for c in colors) > 8, 'Face must remain visible over the fill'
     data = (destination / 'color-check.bmp').read_bytes()
     offset = struct.unpack_from('<I', data, 10)[0]
     index = offset + ((239 - 120) * 240 + 120) * 4
