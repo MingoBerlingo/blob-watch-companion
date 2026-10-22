@@ -20,3 +20,14 @@ Both Debug/Release CTest configurations pass all six suites. The native RP2040
 build and verified flash succeed. Review found no blockers; physical response
 and gyro bias remain for the user's hardware trial. The complementary estimate
 can absorb sustained translation and caps elapsed time at64ms. No push or CI.
+
+## Follow-up: separate force roles
+
+User steering: gyro should supply the weaker gravity direction, accelerometer
+should supply stronger other forces; add more star spikes. Removed all direct
+gyro-to-velocity impulses. Gravity is300px/s² and accelerometer response is9000
+px/s²/g. Drift correction slows to2.5s and only runs while rotation is quiet and
+acceleration norm is near1g. Star now has eight tips and eight valleys (16points,
+480bytes). New regressions verify no gyro kick, stronger translation, frame-rate
+consistency of each role, reduced gravity and eight distinct tips. Debug/Release
+all six suites pass; default firmware builds successfully.

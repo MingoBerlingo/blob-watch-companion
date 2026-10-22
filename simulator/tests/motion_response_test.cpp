@@ -26,7 +26,7 @@ int main() {
         result=motion_response_update(state,sample,20);
         tilt_kick+=result.kick_x;
     }
-    check(tilt_kick>250, "Quick tilt produces an immediate useful velocity change");
+    check(std::fabs(tilt_kick)<0.1f, "Gyro-tracked tilt changes gravity direction without a velocity kick");
     sample.gyro_x_dps=0;
     float held_kick=0;
     for (int i=0;i<100;++i) {
@@ -40,7 +40,7 @@ int main() {
     sample.acceleration_y_g=0.8f;
     float shake_kick=0;
     for (int i=0;i<4;++i) shake_kick+=motion_response_update(state,sample,20).kick_x;
-    check(shake_kick < -200, "Sideways acceleration creates opposite inertial motion promptly");
+    check(shake_kick < -500, "Sideways acceleration creates opposite inertial motion promptly");
     state={};sample={0,0,1,0,0,0};motion_response_update(state,sample,20);
     for (int i=0;i<1000;++i) {
         sample.acceleration_x_g=(i%2 ? 0.01f:-0.01f);
@@ -58,7 +58,14 @@ int main() {
     const auto endpoint=sample;
     sample.acceleration_y_g=std::sin(0.034906585f); sample.acceleration_z_g=std::cos(0.034906585f);
     const auto a=motion_response_update(split,sample,20),b=motion_response_update(split,endpoint,20);
-    check(std::fabs(whole.kick_x-a.kick_x-b.kick_x)<0.1f, "Motion sensitivity remains similar across frame rates");
+    check(std::fabs(whole.tilt_y-b.tilt_y)<0.001f, "Gyro gravity direction remains consistent across frame rates");
+    one={};split={};sample={0,0,1,0,0,0};
+    motion_response_update(one,sample,20);motion_response_update(split,sample,20);
+    sample.acceleration_y_g=0.8f;
+    const auto pulse=motion_response_update(one,sample,40);
+    const auto pulse_a=motion_response_update(split,sample,20),pulse_b=motion_response_update(split,sample,20);
+    check(std::fabs(pulse.kick_x-pulse_a.kick_x-pulse_b.kick_x)<0.01f, "Accelerometer impulse remains consistent across frame rates");
+    (void)a;
 
     SoftBody body{};soft_body_reset(body,120,120,50,116);
     soft_body_impulse(body,1000,-1000);

@@ -191,16 +191,17 @@ The USB connection was manually unplugged after the filled sample, not a crash.
 ## Local 2D soft-body prototype
 
 The local branch `codex/local-softbody-prototype` replaces the animated sine-wave
-contour with a five-point star rest shape and persistent physics state. The
+contour with a eight-point star rest shape and persistent physics state. The
 initial circular version was tested on the device; the current local iteration
-uses ten particles (five tips, five valleys) and stronger tilt acceleration. `BLOB_SOFT_BODY_ENABLED` selects it;
+uses sixteen particles (eight tips, eight valleys) with weaker gravity and
+stronger accelerometer motion forces. `BLOB_SOFT_BODY_ENABLED` selects it;
 `BLOB_SOFT_BODY_ACCELERATION` controls tilt strength. Radius, the 2 px outline,
 face colors and navigation remain unchanged.
 
 The independently written C++ model uses the particle/shape-matching concepts
 explained in [Lisyarus' article](https://lisyarus.github.io/blog/posts/soft-body-physics.html)
 and the [PICO-8 prototype](https://www.lexaloffle.com/bbs/?tid=141367). No cartridge
-code or assets were copied. Each of 10 points owns a position and velocity;
+code or assets were copied. Each of 16 points owns a position and velocity;
 neighbour springs resist stretching. A best-fit rotated rest shape supplies
 restoring forces, and damping reduces deformation while allowing overall motion.
 Tilt acts as acceleration, rather than a target position. Points colliding with
@@ -238,10 +239,10 @@ ffmpeg -y -framerate 25 -i /tmp/blob-softbody/frame-%03d.bmp \
   /tmp/blob-softbody/softbody.gif
 ```
 
-The model stores 312 bytes (previously 704 with 24 particles), with no heap
+The model stores 480 bytes (previously 704 with 24 particles), with no heap
 allocation. On this Mac, 100,000 fixed steps take roughly 10–15 ms in Release; this is not RP2040 timing or animation FPS.
-Steady tilt strength is restored to 650 px/s². Quick turns and translations
-produce separate motion impulses instead of a higher gravity multiplier. The star valleys use
+Steady tilt gravity is 300 px/s². Gyro-derived orientation sets its direction;
+only accelerometer residuals generate the stronger movement impulses. The star valleys use
 62% of the outer radius and the top tip starts upright.
 Device FPS must be measured separately before calling this performance-ready.
 
@@ -268,13 +269,15 @@ steady orientation from transient motion approximately; it is not calibrated
 linear-acceleration navigation or an exact gravity separator during sustained
 translation. Hardware feel still needs user validation.
 
-Gravity remains at 650 px/s². Gyro-driven changes in the gravity direction add an
-immediate velocity impulse (650 px/s per unit vector change). Residual sideways
-acceleration supplies the opposite inertial impulse (6,500 px/s² per g), with a
-0.04 g noise deadband. First samples seed the estimate without a kick, and the
-body's center speed is capped at 400 px/s. Internal deformation velocities remain
-intact. Estimator state resets on page entry. Motion uses the same 64 ms elapsed
-cap as the physics to limit effects from debugger stalls.
+Gravity is 300 px/s². The gyro tracks the gravity direction but never adds a
+velocity impulse directly. Residual sideways acceleration supplies the opposite
+inertial impulse (9,000 px/s² per g), with a 0.04 g noise deadband. Acceleration
+initializes the gravity reference, then corrects gyro drift slowly (2.5 s time
+constant) only while rotation is quiet (<0.2 rad/s) and magnitude is 0.92–1.08 g.
+First samples seed the estimate without a kick, and the body's center speed is
+capped at 400 px/s. Internal deformation velocities remain intact. Estimator
+state resets on page entry. Motion uses the same 64 ms elapsed cap as the physics
+to limit effects from debugger stalls.
 
 Tests distinguish stationary/held tilt from movement, check quick turns and pure
 translation, reject small sensor noise/non-finite readings, compare frame rates,

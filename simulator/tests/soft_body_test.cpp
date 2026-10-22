@@ -49,7 +49,15 @@ void bounded(const SoftBody &body) {
 int main() {
     SoftBody body{};
     soft_body_reset(body, 120, 120, 50, 116);
-    check(SOFT_BODY_POINTS <= 12, "Reduced physics point count");
+    check(SOFT_BODY_POINTS < 24, "Physics still uses fewer points than the first prototype");
+    int tips=0;
+    for (int i=0;i<SOFT_BODY_POINTS;++i) {
+        const int before=(i+SOFT_BODY_POINTS-1)%SOFT_BODY_POINTS, after=(i+1)%SOFT_BODY_POINTS;
+        const float r=std::hypot(body.rest_x[i],body.rest_y[i]);
+        if (r>std::hypot(body.rest_x[before],body.rest_y[before])+1 &&
+            r>std::hypot(body.rest_x[after],body.rest_y[after])+1) ++tips;
+    }
+    check(tips==8, "The rest star has eight distinct spikes");
     float shortest = 1000, longest = 0;
     for (int i=0; i<SOFT_BODY_POINTS; ++i) {
         const float r=std::hypot(body.rest_x[i], body.rest_y[i]);
@@ -61,7 +69,7 @@ int main() {
         soft_body_update(response, 8, BLOB_SOFT_BODY_ACCELERATION, 0);
         soft_body_update(previous_response, 8, 650, 0);
     }
-    check(std::fabs(response.center_x-previous_response.center_x)<0.001f, "Steady gravity remains at its original strength");
+    check(response.center_x-120 < (previous_response.center_x-120)*0.6f, "Steady gravity is weaker than before");
     const float rest_area = area(body);
     auto initial = body;
     for (int i = 0; i < 2000; ++i) soft_body_update(body, 8, 0, 0);

@@ -4,8 +4,7 @@ namespace blob_native
 {
     namespace
     {
-        constexpr float kTiltVelocityGain = 650;
-        constexpr float kShakeAccelerationGain = 6500;
+        constexpr float kShakeAccelerationGain = 9000;
         constexpr float kLinearDeadband = 0.04f;
         constexpr float kRadians = 0.01745329252f;
     }
@@ -39,12 +38,11 @@ namespace blob_native
             gy=old_y*c+(old_z*nx-old_x*nz)*s+ny*dot*(1-c);
             gz=old_z*c+(old_x*ny-old_y*nx)*s+nz*dot*(1-c);
         }
-        const float tilt_delta_x=gx-old_x, tilt_delta_y=gy-old_y;
-        // Slow correction limits gyro drift. Reject acceleration magnitudes that
-        // clearly include a shake instead of interpreting them as a new tilt.
-        if (norm>0.85f && norm<1.15f)
+        // Gyro drives gravity direction only. Correct drift slowly while rotation
+        // is quiet and acceleration magnitude is close to 1g; never kick from gyro.
+        if (norm>0.92f && norm<1.08f && rate<0.2f)
         {
-            const float alpha=dt/(0.7f+dt);
+            const float alpha=dt/(2.5f+dt);
             gx+=(ax/norm-gx)*alpha;
             gy+=(ay/norm-gy)*alpha;
             gz+=(az/norm-gz)*alpha;
@@ -56,8 +54,8 @@ namespace blob_native
         if (fabsf(linear_x)<kLinearDeadband) linear_x=0;
         if (fabsf(linear_y)<kLinearDeadband) linear_y=0;
         out.tilt_x=state.gravity_x; out.tilt_y=state.gravity_y;
-        out.kick_x=kTiltVelocityGain*tilt_delta_y-kShakeAccelerationGain*linear_y*dt;
-        out.kick_y=-kTiltVelocityGain*tilt_delta_x+kShakeAccelerationGain*linear_x*dt;
+        out.kick_x=-kShakeAccelerationGain*linear_y*dt;
+        out.kick_y=kShakeAccelerationGain*linear_x*dt;
         return out;
     }
 }

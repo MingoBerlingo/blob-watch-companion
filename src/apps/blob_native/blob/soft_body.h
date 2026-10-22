@@ -5,7 +5,7 @@
 
 namespace blob_native
 {
-    constexpr int SOFT_BODY_POINTS = 10;
+    constexpr int SOFT_BODY_POINTS = 16;
 
     struct SoftBodyPoint
     {

@@ -129,7 +129,7 @@ namespace blob_native
         body.arena_radius = arena_radius;
         for (int i = 0; i < SOFT_BODY_POINTS; ++i)
         {
-            // Five tips and five valleys. Start with a tip pointing upward.
+            // Eight tips and eight valleys. Start with a tip pointing upward.
             const float angle = -kPi * 0.5f + 2 * kPi * i / SOFT_BODY_POINTS;
             const float point_radius = (i % 2 == 0) ? radius : radius * 0.62f;
             body.rest_x[i] = point_radius * cosf(angle);
