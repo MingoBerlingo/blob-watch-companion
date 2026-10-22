@@ -11,12 +11,14 @@ namespace blob_native
     struct MotionResponse
     {
         float gravity_x = 0, gravity_y = 0, gravity_z = 1;
+        float smooth_tilt_x=0, smooth_tilt_y=0;
+        float linear_x=0, linear_y=0;
         bool ready = false;
     };
     struct MotionOutput
     {
-        float tilt_x, tilt_y; // physical downhill direction, opposite support acceleration
-        float kick_x, kick_y; // screen pixels/second added to center velocity
+        float tilt_x, tilt_y; // filtered board tilt; screen mapping is (+Y, -X)
+        float offset_x, offset_y; // filtered same-direction target offset in screen pixels
     };
     MotionOutput motion_response_update(MotionResponse &state, const MotionInput &input, uint32_t elapsed_ms);
 }

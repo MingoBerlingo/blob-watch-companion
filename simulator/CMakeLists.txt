@@ -34,7 +34,8 @@ add_executable(blob_simulator
     main.cpp runtime.cpp scenarios.cpp blob_benchmark.cpp soft_body_demo.cpp
     "${APP_ROOT}/platform/desktop/waveshare_desktop_board.cpp"
     "${APP}/lv_port/lv_port.cpp" "${APP}/lv_port/theme.cpp"
-    "${APP}/pages/page_manager.cpp" "${APP}/pages/blob/blob_page.cpp"
+    "${APP}/blob/physics_settings.cpp" "${APP}/blob/physics_settings_store.cpp"
+    "${APP}/pages/settings/settings_page.cpp" "${APP}/pages/page_manager.cpp" "${APP}/pages/blob/blob_page.cpp"
     "${APP}/pages/timer/timer_page.cpp" "${APP}/pages/brightness/brightness_page.cpp"
     "${APP}/timer/runtime_draw.cpp" "${APP}/timer/logic.cpp" "${APP}/blob/shape.cpp" "${APP}/blob/face.cpp" "${APP}/blob/soft_body.cpp" "${APP}/blob/motion_response.cpp")
 target_compile_definitions(blob_simulator PRIVATE BLOB_DESKTOP_SIMULATOR)
@@ -57,10 +58,16 @@ add_executable(blob_shape_benchmark tests/blob_shape_benchmark.cpp "${APP}/blob/
 target_include_directories(blob_shape_benchmark PRIVATE "${APP_ROOT}" "${CMAKE_CURRENT_SOURCE_DIR}/compat")
 add_test(NAME blob_shape_regression COMMAND blob_shape_benchmark)
 
-add_executable(soft_body_test tests/soft_body_test.cpp "${APP}/blob/soft_body.cpp" "${APP}/blob/face.cpp")
+add_executable(soft_body_test tests/soft_body_test.cpp "${APP}/blob/physics_settings.cpp" "${APP}/blob/soft_body.cpp" "${APP}/blob/face.cpp")
 target_include_directories(soft_body_test PRIVATE "${APP_ROOT}" "${CMAKE_CURRENT_SOURCE_DIR}/compat")
 add_test(NAME soft_body_regression COMMAND soft_body_test)
 
-add_executable(motion_response_test tests/motion_response_test.cpp "${APP}/blob/motion_response.cpp" "${APP}/blob/soft_body.cpp")
+add_executable(motion_response_test tests/motion_response_test.cpp "${APP}/blob/physics_settings.cpp" "${APP}/blob/motion_response.cpp" "${APP}/blob/soft_body.cpp")
 target_include_directories(motion_response_test PRIVATE "${APP_ROOT}")
 add_test(NAME motion_response_regression COMMAND motion_response_test)
+
+set_tests_properties(simulator_integration PROPERTIES TIMEOUT 30)
+add_executable(physics_settings_test tests/physics_settings_test.cpp
+    "${APP}/blob/physics_settings.cpp" "${APP}/blob/physics_settings_store.cpp")
+target_include_directories(physics_settings_test PRIVATE "${APP_ROOT}")
+add_test(NAME physics_settings_regression COMMAND physics_settings_test)

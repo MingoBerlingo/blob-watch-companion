@@ -205,20 +205,28 @@ volume constraint or general self-collision solver.
 
 ### Current center control and rotation
 
-Movement again uses the original accelerometer-to-position mapping:
+Movement separates tilt from translational acceleration using the full IMU:
 
-- Target X = screen center X + accelerometer Y * 64 px * 3.5.
-- Target Y = screen center Y - accelerometer X * 64 px * 3.5.
-- Holding a tilt settles at the target; flat input recenters the body.
-- Linear acceleration also changes that target, as in the original firmware.
+- Gyro propagation plus slow accelerometer correction estimates the gravity reference.
+- The working board/screen tilt axes remain (+Y, -X), attracting toward the lowered edge.
+- Gravity-subtracted acceleration moves the target in the same screen direction as the hand,
+  retaining the softened input without the opposite-direction inertial response.
+- Linear input has a soft 0.06g deadzone and a 70 ms exponential low-pass filter;
+  tilt has an 80 ms filter and a small 0.012g deadzone.
+- The movement target offset uses 100 px/g, is bounded, and decays after movement.
+  No acceleration is integrated into an ever-drifting position.
 
-The original spring-like controller is approximated at fixed 8 ms steps with
-stiffness 585.9375/s² and damping 15.625/s, plus the existing air drag. `BLOB_TILT_SENSITIVITY` (currently 3.5) makes about 20° enough for rim contact. Target
-positions allow 8 px of overlap beyond the rigid-fit circular center region so the
+The spring-like controller runs at fixed 8 ms steps with
+stiffness 2500/s² and damping 85/s, plus the existing air drag. runtime tilt sensitivity defaults to 1.5, keeping moderate viewing angles away from the rim. Its slider spans 0.5–5.0 in 0.1 steps. Target
+positions allow 10 px of overlap beyond the rigid-fit circular center region so the
 soft body can press against the wall and deform; control
-acceleration is capped at 4000 px/s² and center speed at 400 px/s. The response is
+acceleration is capped at 24000 px/s² and center speed at 500 px/s. The response is
 therefore similar to the original behavior, not numerically identical. Internal
-deformation and contact forces are retained. At most eight steps are processed
+deformation and contact forces are retained. Velocity stretches the contour goals
+along travel by up to 25%, with reciprocal perpendicular compression. The elastic
+outline therefore lags and recovers even without wall contact. Shape damping is
+8/s in free space, rising to 30/s within 4 px of the wall to prevent repeated
+fast impacts from folding the contour. Wall restitution remains 0.3. At most eight steps are processed
 per update, discarding excess time after a long stall.
 
 The best-fit particle rotation now also rotates the face's forward/side axes:
@@ -226,10 +234,10 @@ eyes, mouth, and blinking eyelids all turn with the body. Contacts can rotate th
 body freely. Device yaw does not directly rotate it. Returning to the Blob page
 resets its state, matching the existing lifecycle.
 
-The earlier gyro-gravity/shake estimator (`motion_response.*`) is retained as an
-inactive experiment with isolated tests; the Blob page no longer calls it. The
-active path uses `waveshare_native_read_tilt`, so there is no gravity estimator,
-separate gravity force, or gyro-triggered impulse driving the current body.
+The active Blob path calls `waveshare_native_read_motion` and
+`motion_response_update`. Filters reset when returning to the Blob page. Physics
+settings retain their existing defaults and saved format; input smoothing does
+not modify saved slider values.
 
 ### Preview and validation
 
@@ -261,3 +269,31 @@ and 90-degree face geometry. The existing shared-page interactions, deterministi
 screenshots and timer/brightness/navigation tests remain enabled. The model is
 only validated for the current parameters; extreme stiffness, arbitrary obstacles
 or dragging would require more robust collision/topology handling.
+
+### Blob physics settings
+
+Hold a stationary finger on the Blob for about 650 ms to open settings. The
+opening touch is consumed until release. Prev/Next switch between Follow, Shape,
+Motion, Edge and Size; slider drags do not trigger normal page navigation. Back returns
+to the Blob with the current values active. Shape selection remains unchanged. Size scales the outline and face from 60% to
+160% (100% is the previous size). Save also persists size; version 1 records
+retain their eight existing values and receive 100% size on migration.
+
+- Follow speed adjusts target spring stiffness; Follow damping controls overshoot.
+- Stiffness and Shape damping control deformation and recovery.
+- Tilt sensitivity scales the target position; Bounce controls wall restitution.
+- Wall friction slows sliding along the bezel; Max speed caps center translation.
+
+Reset restores this build's defaults in RAM. Save explicitly writes the current
+settings to the board's EEPROM-emulated flash, with a format version and checksum.
+Without Save, edits last until reboot. Missing/corrupt/incompatible records fall
+back to defaults. The desktop adapter keeps Save data in memory for the current
+simulator process; flash persistence is implemented by the hardware adapter.
+
+The menu uses bounded controls, including a 500 px/s maximum speed (scaled down for smaller bodies); deformation
+near the rim retains its extra contact damping. A local regression checks all
+512 combinations of control endpoints under repeated impacts. This verifies
+those cases, rather than guaranteeing every possible physical input sequence.
+
+Smaller bodies also reduce the acceleration cap, wall overlap and velocity-driven
+stretch to avoid folding at the smallest size. Default-size physics is unchanged.

@@ -1,4 +1,5 @@
 #include "apps/blob_native/blob/soft_body.h"
+#include "apps/blob_native/blob/physics_settings.h"
 #include "apps/blob_native/shared_state.h"
 #include "apps/blob_native/blob/face.h"
 #include <cmath>
@@ -8,8 +9,9 @@
 
 using namespace blob_native;
 namespace {
+int diagnostic_combination=-1;
 void check(bool passed, const char *message) {
-    if (!passed) { std::cerr << "FAIL " << message << '\n'; std::exit(1); }
+    if (!passed) { std::cerr << "FAIL combination " << diagnostic_combination << " " << message << '\n'; std::exit(1); }
 }
 float area(const SoftBody &body) {
     float sum = 0;
@@ -42,7 +44,9 @@ void bounded(const SoftBody &body) {
             const int nj=(j+1)%SOFT_BODY_POINTS;
             if (j==ni || nj==i) continue;
             const auto &a=body.points[i], &b=body.points[ni], &c=body.points[j], &d=body.points[nj];
-            check(!(turn(a,b,c)*turn(a,b,d)<-0.001f && turn(c,d,a)*turn(c,d,b)<-0.001f), "Contour edges do not cross under stress");
+            const bool crossed=turn(a,b,c)*turn(a,b,d)<-0.001f && turn(c,d,a)*turn(c,d,b)<-0.001f;
+            if(crossed) std::cerr<<"Radius "<<body.rest_radius<<" center "<<body.center_x<<","<<body.center_y<<" speed "<<body.velocity_x<<","<<body.velocity_y<<" edges "<<i<<","<<j<<"\n";
+            check(!crossed, "Contour edges do not cross under stress");
         }
     }
 }
@@ -65,6 +69,13 @@ int main() {
         shortest=std::fmin(shortest,r); longest=std::fmax(longest,r);
     }
     check(shortest > longest*0.75f && shortest < longest*0.85f, "Star has a larger inner radius while retaining visible valleys");
+    auto cursor = body;
+    for (int i=0;i<12;++i) soft_body_follow(cursor,8,152,120);
+    check(cursor.center_x>145.6f, "Cursor follows at least 80 percent of a target step within 96 ms");
+    check(deformation(cursor)>16, "Cursor motion deforms the outline before any wall contact");
+    for (int i=0;i<300;++i) soft_body_follow(cursor,8,152,120);
+    check(std::fabs(cursor.center_x-152)<0.5f && deformation(cursor)<0.1f,
+          "Stopping the cursor restores the rest shape at its target");
     auto response = body;
     soft_body_follow(response,16,152,120);
     check(response.center_x>120.5f, "Position controller responds immediately toward accelerometer target");
@@ -168,6 +179,42 @@ int main() {
         }
     }
     body = initial;
+    // Cursor targets can jump across the display on a quick shake, unlike
+    // the smooth sweep above. Check the full contour on every physics step.
+    for (int i=0;i<10000;++i) {
+        const int corner=(i/20)%4;
+        soft_body_follow(body,8,corner<2 ? 240:0,corner%3 ? 240:0);
+        bounded(body);
+        check(area(body)>rest_area*0.45f, "Abrupt cursor reversals do not collapse the contour");
+    }
+    body=initial;
+    for (int i=0;i<10000;++i) {
+        const float angle=((i/11)%5)*1.2566370614f;
+        soft_body_follow(body,8,120+100*std::cos(angle),120+100*std::sin(angle));
+        bounded(body);
+        check(area(body)>rest_area*0.45f, "Rapid changes along the rim retain a valid contour");
+    }
+    body = initial;
+    for(int combination=0;combination<512;++combination) {
+        diagnostic_combination=combination;
+        physics_settings_reset();
+        for(int control=0;control<PHYSICS_SETTING_COUNT;++control) {
+            const auto &c=physics_settings_control(control);
+            physics_settings_set(control,combination&(1<<control) ? c.maximum:c.minimum);
+        }
+        soft_body_reset(body,120,120,physics_settings_get().blob_radius,116);
+        const float size_area=area(body);
+        for(int i=0;i<1500;++i) {
+            const float angle=((i/11)%5)*1.2566370614f;
+            soft_body_follow(body,8,120+100*std::cos(angle),120+100*std::sin(angle));
+            if(i%10==0) {
+                bounded(body);
+                check(area(body)>size_area*0.45f,"Settings range combinations survive repeated rim impacts");
+            }
+        }
+    }
+    physics_settings_reset();
+    body=initial;
     const auto start = std::chrono::steady_clock::now();
     for (int i = 0; i < 100000; ++i) soft_body_update(body, 8, 400, 200);
     const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();

@@ -11,61 +11,63 @@ void check(bool condition, const char *message) {
 }
 int main() {
     MotionResponse state{};
-    MotionInput sample{0, 0, 1, 0, 0, 0};
-    auto result = motion_response_update(state, sample, 20);
-    check(result.kick_x == 0 && result.kick_y == 0, "First sample never kicks");
-    for (int i=0;i<1000;++i) {
-        result = motion_response_update(state, sample, 20);
-        check(std::fabs(result.kick_x)+std::fabs(result.kick_y)<0.001f, "Stationary board receives no boost");
+    MotionInput sample{0,0,1,0,0,0};
+    auto result=motion_response_update(state,sample,16);
+    for(int i=0;i<500;++i) {
+        sample.acceleration_x_g=(i%2 ? 0.03f:-0.03f);
+        sample.acceleration_y_g=(i%2 ? -0.03f:0.03f);
+        result=motion_response_update(state,sample,16);
+        check(std::fabs(result.offset_x)<0.1f && std::fabs(result.offset_y)<0.1f,
+              "Small hand tremor does not move the movement target");
     }
-    // Roll 30 degrees in 100 ms. Accelerometer direction and gyro agree.
-    float tilt_kick=0;
-    for (int i=1;i<=5;++i) {
+    state={};sample={0,0,1,0,0,0};motion_response_update(state,sample,16);
+    sample.acceleration_y_g=0.6f;
+    result=motion_response_update(state,sample,16);
+    check(result.offset_x>0 && result.offset_x<20,"Movement follows the hand with a softened onset");
+    for(int i=0;i<5;++i) result=motion_response_update(state,sample,16);
+    check(result.offset_x > 20,"Deliberate shakes still produce visible softened motion");
+    sample={0,0,1,0,0,0};
+    for(int i=0;i<150;++i) result=motion_response_update(state,sample,16);
+    check(std::fabs(result.offset_x)<0.1f,"Movement offset settles after movement stops");
+    state={};motion_response_update(state,sample,20);
+    for(int i=1;i<=5;++i) {
         const float angle=i*0.104719755f;
         sample={0,std::sin(angle),std::cos(angle),300,0,0};
         result=motion_response_update(state,sample,20);
-        tilt_kick+=result.kick_x;
+        check(std::fabs(result.offset_x)<0.1f,"Pure gyro-tracked tilt does not masquerade as a shake");
     }
-    check(std::fabs(tilt_kick)<0.1f, "Gyro-tracked tilt changes gravity direction without a velocity kick");
     sample.gyro_x_dps=0;
-    float held_kick=0;
-    for (int i=0;i<100;++i) {
-        result=motion_response_update(state,sample,20);
-        held_kick+=std::fabs(result.kick_x);
-    }
-    check(held_kick<10, "Holding the new tilt does not repeatedly boost velocity");
-    check(std::fabs(result.tilt_y+0.5f)<0.02f, "Physical gravity opposes the accelerometer support vector");
-
-    state={};sample={0,0,1,0,0,0};motion_response_update(state,sample,20);
-    sample.acceleration_y_g=0.8f;
-    float shake_kick=0;
-    for (int i=0;i<4;++i) shake_kick+=motion_response_update(state,sample,20).kick_x;
-    check(shake_kick < -500, "Sideways acceleration creates opposite inertial motion promptly");
-    state={};sample={0,0,1,0,0,0};motion_response_update(state,sample,20);
-    for (int i=0;i<1000;++i) {
-        sample.acceleration_x_g=(i%2 ? 0.01f:-0.01f);
-        result=motion_response_update(state,sample,20);
-        check(std::fabs(result.kick_y)<0.01f, "Small stationary sensor noise is rejected");
-    }
+    for(int i=0;i<100;++i) result=motion_response_update(state,sample,20);
+    check(result.tilt_y>0.47f && result.tilt_y<0.51f,"Held tilt retains the working downhill axis mapping");
     sample.acceleration_x_g=NAN;
     result=motion_response_update(state,sample,20);
-    check(std::isfinite(result.kick_x)&&std::isfinite(result.tilt_x), "Invalid sensor input is ignored");
+    check(std::isfinite(result.offset_x)&&std::isfinite(result.tilt_x),"Invalid sensor data is ignored");
 
-    MotionResponse one{}, split{};
-    sample={0,0,1,0,0,0};motion_response_update(one,sample,20);motion_response_update(split,sample,20);
-    sample={0,std::sin(0.06981317f),std::cos(0.06981317f),100,0,0};
-    const auto whole=motion_response_update(one,sample,40);
-    const auto endpoint=sample;
-    sample.acceleration_y_g=std::sin(0.034906585f); sample.acceleration_z_g=std::cos(0.034906585f);
-    const auto a=motion_response_update(split,sample,20),b=motion_response_update(split,endpoint,20);
-    check(std::fabs(whole.tilt_y-b.tilt_y)<0.001f, "Gyro gravity direction remains consistent across frame rates");
-    one={};split={};sample={0,0,1,0,0,0};
-    motion_response_update(one,sample,20);motion_response_update(split,sample,20);
-    sample.acceleration_y_g=0.8f;
-    const auto pulse=motion_response_update(one,sample,40);
-    const auto pulse_a=motion_response_update(split,sample,20),pulse_b=motion_response_update(split,sample,20);
-    check(std::fabs(pulse.kick_x-pulse_a.kick_x-pulse_b.kick_x)<0.01f, "Accelerometer impulse remains consistent across frame rates");
-    (void)a;
+    // A small 8 Hz angular tremor has matching acceleration and gyro input.
+    state={};sample={0,0,1,0,0,0};motion_response_update(state,sample,8);
+    for(int i=1;i<1000;++i) {
+        const float time=i*0.008f;
+        const float angle=0.01f*std::sin(50.265482f*time);
+        const float rate=28.8f*std::cos(50.265482f*(time-0.004f));
+        sample={0,std::sin(angle),std::cos(angle),rate,0,0};
+        result=motion_response_update(state,sample,8);
+        check(std::fabs(result.tilt_y)<0.001f && std::fabs(result.offset_x)<0.1f,
+              "Small angular tremor is softened without creating fake shakes");
+    }
+    state={};sample={0,0,1,0,0,0};motion_response_update(state,sample,20);
+    for(int i=1;i<=500;++i) {
+        const float angle=i*0.00034906585f;
+        sample={0,std::sin(angle),std::cos(angle),1,0,0};
+        result=motion_response_update(state,sample,20);
+    }
+    check(result.tilt_y>0.155f,"Slow deliberate tilts remain responsive despite tremor filtering");
+    MotionResponse whole{},split{};sample={0,0,1,0,0,0};
+    motion_response_update(whole,sample,20);motion_response_update(split,sample,20);
+    sample.acceleration_y_g=0.6f;
+    const auto one=motion_response_update(whole,sample,40);
+    motion_response_update(split,sample,20);
+    const auto two=motion_response_update(split,sample,20);
+    check(std::fabs(one.offset_x-two.offset_x)<0.001f,"Smoothing is consistent across sample intervals");
 
     SoftBody body{};soft_body_reset(body,120,120,50,116);
     soft_body_impulse(body,1000,-1000);

@@ -7,6 +7,8 @@ ROOT = Path(__file__).resolve().parents[1]
 with tempfile.TemporaryDirectory() as directory:
     temp = Path(directory)
     headers = {
+        'apps/blob_native/blob/physics_settings.h': 'namespace blob_native { void physics_settings_reset(){} bool physics_settings_load(){return false;} }',
+        'apps/blob_native/pages/settings/settings_page.h': 'void settings_page_init(){} void settings_page_show(){}',
         'Arduino.h': '#include <stdint.h>\nuint32_t millis(){return 0;}\nvoid delay(int){}\n',
         'apps/blob_native/lv_port/lv_port.h': 'void lv_port_handler(){} void lv_port_block_touch_until_release(){}',
         'apps/blob_native/pages/blob/blob_page.h': 'void blob_page_init(){} void blob_page_show(){} void blob_page_hide(){}',

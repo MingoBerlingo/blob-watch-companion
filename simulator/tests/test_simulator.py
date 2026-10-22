@@ -56,7 +56,7 @@ def run(destination):
                     if data[offset + ((239-y)*240+x)*4] > 100 and
                     data[offset + ((239-y)*240+x)*4 + 2] > 40 and
                     data[offset + ((239-y)*240+x)*4 + 1] < 20)
-    assert rightmost >= 232, 'Moderate tilt must bring the star into contact with the rim'
+    assert 190 <= rightmost < 225, 'Gentle default tilt should move Blob without pinning it to the rim'
     data = (destination / 'color-check.bmp').read_bytes()
     offset = struct.unpack_from('<I', data, 10)[0]
     index = offset + ((239 - 120) * 240 + 120) * 4

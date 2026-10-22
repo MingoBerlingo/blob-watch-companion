@@ -1,6 +1,7 @@
 #include "apps/blob_native/blob/soft_body.h"
 
 #include <math.h>
+#include "apps/blob_native/blob/physics_settings.h"
 
 namespace blob_native
 {
@@ -9,13 +10,11 @@ namespace blob_native
         constexpr uint32_t kStepMs = 8;
         constexpr uint32_t kMaxCatchupMs = 64;
         constexpr float kDt = kStepMs / 1000.0f;
-        constexpr float kShapeStiffness = 320.0f;
-        constexpr float kShapeDamping = 12.0f;
         constexpr float kEdgeStiffness = 240.0f;
         constexpr float kEdgeDamping = 2.5f;
         constexpr float kAirDrag = 0.9f;
-        constexpr float kBounce = 0.2f;
-        constexpr float kContactFriction = 0.04f;
+        constexpr float kCursorMaxAcceleration = 24000.0f;
+        constexpr float kContactAllowance = 10.0f;
         constexpr float kPi = 3.14159265358979323846f;
 
         void measure(SoftBody &body)
@@ -43,14 +42,18 @@ namespace blob_native
         void step(SoftBody &body, float ax, float ay, bool follow=false, float target_x=0, float target_y=0)
         {
             measure(body);
+            const auto &settings=physics_settings_get();
+            const float size_limit=fminf(1,body.rest_radius/50.0f);
             if (follow)
             {
-                // Continuous-time equivalent of the original 16 ms controller:
-                // v = 0.75*v + 0.15*(target-position), with bounded drive.
-                ax=585.9375f*(target_x-body.center_x)-15.625f*body.velocity_x;
-                ay=585.9375f*(target_y-body.center_y)-15.625f*body.velocity_y;
+                // Spring toward the tilt target, with bounded drive.
+                ax=settings.follow_stiffness*(target_x-body.center_x)-settings.follow_damping*body.velocity_x;
+                ay=settings.follow_stiffness*(target_y-body.center_y)-settings.follow_damping*body.velocity_y;
                 const float force=sqrtf(ax*ax+ay*ay);
-                if (force>4000) { ax*=4000/force; ay*=4000/force; }
+                if (force>kCursorMaxAcceleration*size_limit) {
+                    ax*=kCursorMaxAcceleration*size_limit/force;
+                    ay*=kCursorMaxAcceleration*size_limit/force;
+                }
             }
             float dot = 0, cross = 0, inertia = 0, angular_momentum = 0;
             for (int i = 0; i < SOFT_BODY_POINTS; ++i)
@@ -67,17 +70,43 @@ namespace blob_native
             const float cosine = length > 0.0001f ? dot / length : 1;
             const float sine = length > 0.0001f ? cross / length : 0;
             const float omega = inertia > 0.0001f ? angular_momentum / inertia : 0;
+            // Cursor translation and elastic contour are separate responses.
+            // Stretch the rest goals along travel; perpendicular compression
+            // preserves their area. Springs make the outline lag and recover.
+            const float speed=sqrtf(body.velocity_x*body.velocity_x+body.velocity_y*body.velocity_y);
+            const float travel_x=speed>0.001f ? body.velocity_x/speed:1;
+            const float travel_y=speed>0.001f ? body.velocity_y/speed:0;
+            const float stretch=follow ? 1+0.25f*size_limit*size_limit*fminf(speed/(600.0f*size_limit),1.0f):1;
+            const float squeeze=1/stretch;
+            // Dissipate deformation near contact, while retaining the lively
+            // low-damping response in free motion. Fast repeated impacts must
+            // not build up enough internal oscillation to fold the contour.
+            float shape_damping=settings.shape_damping;
+            if (follow) {
+                const float contact_radius=fmaxf(0,body.arena_radius-4);
+                for (const auto &p:body.points) {
+                    const float dx=p.x-body.arena_x,dy=p.y-body.arena_y;
+                    if (dx*dx+dy*dy>=contact_radius*contact_radius) {
+                        shape_damping=30.0f;
+                        break;
+                    }
+                }
+            }
             float fx[SOFT_BODY_POINTS], fy[SOFT_BODY_POINTS];
             for (int i = 0; i < SOFT_BODY_POINTS; ++i)
             {
                 const auto &p = body.points[i];
-                const float goal_x = body.center_x + cosine * body.rest_x[i] - sine * body.rest_y[i];
-                const float goal_y = body.center_y + sine * body.rest_x[i] + cosine * body.rest_y[i];
+                const float rx=cosine*body.rest_x[i]-sine*body.rest_y[i];
+                const float ry=sine*body.rest_x[i]+cosine*body.rest_y[i];
+                const float along=rx*travel_x+ry*travel_y;
+                const float across=-rx*travel_y+ry*travel_x;
+                const float goal_x=body.center_x+along*stretch*travel_x-across*squeeze*travel_y;
+                const float goal_y=body.center_y+along*stretch*travel_y+across*squeeze*travel_x;
                 const float rigid_vx = body.velocity_x - omega * (p.y - body.center_y);
                 const float rigid_vy = body.velocity_y + omega * (p.x - body.center_x);
                 // Dampen deformation without damping rigid translation/rotation.
-                fx[i] = ax + kShapeStiffness * (goal_x - p.x) - kShapeDamping * (p.vx - rigid_vx);
-                fy[i] = ay + kShapeStiffness * (goal_y - p.y) - kShapeDamping * (p.vy - rigid_vy);
+                fx[i] = ax + settings.shape_stiffness * (goal_x - p.x) - shape_damping * (p.vx - rigid_vx);
+                fy[i] = ay + settings.shape_stiffness * (goal_y - p.y) - shape_damping * (p.vy - rigid_vy);
             }
             for (int i = 0; i < SOFT_BODY_POINTS; ++i)
             {
@@ -103,7 +132,14 @@ namespace blob_native
             if (follow)
             {
                 measure(body);
-                soft_body_impulse(body,0,0); // Cap only rigid translation, retain deformation.
+                const float center_speed=sqrtf(body.velocity_x*body.velocity_x+body.velocity_y*body.velocity_y);
+                if (center_speed>settings.max_speed*size_limit) {
+                    const float factor=settings.max_speed*size_limit/center_speed-1;
+                    for (auto &p:body.points) {
+                        p.vx+=body.velocity_x*factor;
+                        p.vy+=body.velocity_y*factor;
+                    }
+                }
             }
             for (auto &p : body.points)
             {
@@ -120,12 +156,12 @@ namespace blob_native
                 // A point already moving inward must not bounce back into the wall.
                 if (outward_speed > 0)
                 {
-                    p.vx -= (1 + kBounce) * outward_speed * nx;
-                    p.vy -= (1 + kBounce) * outward_speed * ny;
+                    p.vx -= (1 + settings.bounce) * outward_speed * nx;
+                    p.vy -= (1 + settings.bounce) * outward_speed * ny;
                 }
                 const float normal_speed = p.vx * nx + p.vy * ny;
-                p.vx -= kContactFriction * (p.vx - normal_speed * nx);
-                p.vy -= kContactFriction * (p.vy - normal_speed * ny);
+                p.vx -= settings.friction * (p.vx - normal_speed * nx);
+                p.vy -= settings.friction * (p.vy - normal_speed * ny);
             }
         }
 
@@ -181,7 +217,7 @@ namespace blob_native
         const float distance=sqrtf(dx*dx+dy*dy);
         // A small overlap lets the soft body press into the rim and deform;
         // clamping at the rigid-fit radius prevented real contact.
-        const float limit=fmaxf(0,body.arena_radius-body.rest_radius+8.0f);
+        const float limit=fmaxf(0,body.arena_radius-body.rest_radius+kContactAllowance*fminf(1,body.rest_radius/50.0f));
         if (distance>limit)
         {
             target_x=body.arena_x+dx*limit/distance;

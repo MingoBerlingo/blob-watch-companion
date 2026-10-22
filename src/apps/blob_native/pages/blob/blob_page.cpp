@@ -1,3 +1,5 @@
+#include "apps/blob_native/blob/motion_response.h"
+#include "apps/blob_native/blob/physics_settings.h"
 #include "apps/blob_native/pages/blob/blob_page.h"
 
 #include <Arduino.h>
@@ -33,6 +35,8 @@ namespace blob_native
             float vel_x;
             float vel_y;
         };
+
+        MotionResponse g_motion{};
 
         BlobState g_state = {0.0f, CENTER_X, CENTER_Y, 0.0f, CENTER_X, CENTER_Y, 0.0f, 0.0f};
 
@@ -107,6 +111,12 @@ namespace blob_native
             }
         }
 
+        void scale_face_point(float cx,float cy,float scale,int16_t *x,int16_t *y) {
+            if(scale==1) return;
+            *x=static_cast<int16_t>(lroundf(cx+(*x-cx)*scale));
+            *y=static_cast<int16_t>(lroundf(cy+(*y-cy)*scale));
+        }
+
         void draw_blob(lv_event_t *e)
         {
             lv_draw_ctx_t *ctx = lv_event_get_draw_ctx(e);
@@ -154,14 +164,18 @@ namespace blob_native
             // Keep facial details at their original stroke width.
             line_dsc.width = 1;
 
+            const float face_scale=BLOB_SOFT_BODY_ENABLED ? g_soft_body.rest_radius/BLOB_RADIUS:1;
+            const int eye_radius=static_cast<int>(fmaxf(1,lroundf(EYE_RADIUS*face_scale)));
             // Eyes.
             int16_t lx, ly, rx, ry;
             compute_eye_positions(cx, cy, g_face_x, g_face_y, speed, phase, &lx, &ly, &rx, &ry);
 
+            scale_face_point(cx,cy,face_scale,&lx,&ly);
+            scale_face_point(cx,cy,face_scale,&rx,&ry);
             const lv_color_t eye_c = lv_theme_get_color_secondary(g_screen);
             if (compute_blink_amount(speed, phase) > 0.4f)
             {
-                const int16_t half_lid = EYE_RADIUS + 1;
+                const int16_t half_lid = lroundf((EYE_RADIUS+1)*face_scale);
                 const int16_t side_x=(int16_t)(-g_face_y*half_lid), side_y=(int16_t)(g_face_x*half_lid);
                 draw_segment(ctx, &line_dsc, lx-side_x, ly-side_y, lx+side_x, ly+side_y, eye_c);
                 draw_segment(ctx, &line_dsc, rx-side_x, ry-side_y, rx+side_x, ry+side_y, eye_c);
@@ -174,10 +188,10 @@ namespace blob_native
                 rect_dsc.bg_color = eye_c;
                 rect_dsc.radius = LV_RADIUS_CIRCLE;
 
-                lv_area_t a1 = {(lv_coord_t)(lx - EYE_RADIUS), (lv_coord_t)(ly - EYE_RADIUS),
-                                (lv_coord_t)(lx + EYE_RADIUS), (lv_coord_t)(ly + EYE_RADIUS)};
-                lv_area_t a2 = {(lv_coord_t)(rx - EYE_RADIUS), (lv_coord_t)(ry - EYE_RADIUS),
-                                (lv_coord_t)(rx + EYE_RADIUS), (lv_coord_t)(ry + EYE_RADIUS)};
+                lv_area_t a1 = {(lv_coord_t)(lx - eye_radius), (lv_coord_t)(ly - eye_radius),
+                                (lv_coord_t)(lx + eye_radius), (lv_coord_t)(ly + eye_radius)};
+                lv_area_t a2 = {(lv_coord_t)(rx - eye_radius), (lv_coord_t)(ry - eye_radius),
+                                (lv_coord_t)(rx + eye_radius), (lv_coord_t)(ry + eye_radius)};
                 lv_draw_rect(ctx, &rect_dsc, &a1);
                 lv_draw_rect(ctx, &rect_dsc, &a2);
             }
@@ -185,6 +199,9 @@ namespace blob_native
             // Mouth (neutral smile).
             int16_t mx0, my0, mxm, mym, mx1, my1;
             compute_mouth_points(cx, cy, g_face_x, g_face_y, speed, phase, &mx0, &my0, &mxm, &mym, &mx1, &my1);
+            scale_face_point(cx,cy,face_scale,&mx0,&my0);
+            scale_face_point(cx,cy,face_scale,&mxm,&mym);
+            scale_face_point(cx,cy,face_scale,&mx1,&my1);
             const lv_color_t mouth_c = lv_theme_get_color_secondary(g_screen);
             draw_segment(ctx, &line_dsc, mx0, my0, mxm, mym, mouth_c);
             draw_segment(ctx, &line_dsc, mxm, mym, mx1, my1, mouth_c);
@@ -197,12 +214,18 @@ namespace blob_native
                 const uint32_t now = millis();
                 const uint32_t elapsed = now - g_last_blob_ms;
                 g_last_blob_ms = now;
-                float tilt_x = 0, tilt_y = 0;
-                if (BLOB_USE_IMU) waveshare_native_read_tilt(&tilt_x, &tilt_y);
-                // Original accelerometer axes with expanded sensitivity, driving the
-                // soft body's center through its fixed-step damped controller.
-                const float target_x=CENTER_X+tilt_y*BLOB_TILT_SENSITIVITY*(CENTER_X-BLOB_RADIUS-6.0f);
-                const float target_y=CENTER_Y-tilt_x*BLOB_TILT_SENSITIVITY*(CENTER_Y-BLOB_RADIUS-6.0f);
+                MotionOutput motion{};
+                WaveshareNativeMotionSample sample{};
+                if(BLOB_USE_IMU && waveshare_native_read_motion(&sample)) {
+                    const MotionInput input{sample.acceleration_x_g,sample.acceleration_y_g,sample.acceleration_z_g,
+                                            sample.gyro_x_dps,sample.gyro_y_dps,sample.gyro_z_dps};
+                    motion=motion_response_update(g_motion,input,elapsed);
+                }
+                // Tilt attracts toward the lowered edge. Gravity-subtracted
+                // acceleration follows the hand with the same input smoothing.
+                const float scale=physics_settings_get().tilt_sensitivity*(CENTER_X-g_soft_body.rest_radius-6.0f);
+                const float target_x=CENTER_X+motion.tilt_y*scale+motion.offset_x;
+                const float target_y=CENTER_Y-motion.tilt_x*scale+motion.offset_y;
                 soft_body_follow(g_soft_body,elapsed,target_x,target_y);
                 float cosine,sine;
                 soft_body_rotation(g_soft_body,&cosine,&sine);
@@ -266,10 +289,11 @@ namespace blob_native
             g_state.cy = CENTER_Y;
             g_state.speed = 0.0f;
             g_last_blob_ms = millis();
+            g_motion={};
             g_face_x=FACE_DIR_X; g_face_y=FACE_DIR_Y;
             if (BLOB_SOFT_BODY_ENABLED)
             {
-                soft_body_reset(g_soft_body, CENTER_X, CENTER_Y, BLOB_RADIUS,
+                soft_body_reset(g_soft_body, CENTER_X, CENTER_Y, physics_settings_get().blob_radius,
                                 CENTER_X - BLOB_OUTLINE_WIDTH - 2);
                 soft_body_outline(g_soft_body, g_px, g_py, POINTS);
             }

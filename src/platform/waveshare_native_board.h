@@ -2,6 +2,7 @@
 #define WAVESHARE_NATIVE_BOARD_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 enum class WaveshareNativeTouchGesture : uint8_t
 {
@@ -36,5 +37,8 @@ void waveshare_native_flush_area(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
 bool waveshare_native_read_motion(WaveshareNativeMotionSample *sample);
 bool waveshare_native_read_tilt(float *tilt_x, float *tilt_y);
 bool waveshare_native_poll_touch(WaveshareNativeTouchSample *sample);
+
+bool waveshare_native_load_settings(void *data, size_t size);
+bool waveshare_native_save_settings(const void *data, size_t size);
 
 #endif

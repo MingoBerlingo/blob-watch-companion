@@ -1,6 +1,7 @@
 #include "platform/waveshare_native_board.h"
 
 #include <Arduino.h>
+#include <EEPROM.h>
 
 #include "DEV_Config.h"
 #include "LCD_1in28.h"
@@ -159,4 +160,20 @@ bool waveshare_native_poll_touch(WaveshareNativeTouchSample *sample)
 
   return true;
 #endif
+}
+
+// EEPROM emulation writes flash only on an explicit settings Save.
+bool waveshare_native_load_settings(void *data,size_t size) {
+    if(!data || size>256) return false;
+    EEPROM.begin(256);
+    auto *bytes=static_cast<uint8_t*>(data);
+    for(size_t i=0;i<size;++i) bytes[i]=EEPROM.read(i);
+    return true;
+}
+bool waveshare_native_save_settings(const void *data,size_t size) {
+    if(!data || size>256) return false;
+    EEPROM.begin(256);
+    const auto *bytes=static_cast<const uint8_t*>(data);
+    for(size_t i=0;i<size;++i) EEPROM.write(i,bytes[i]);
+    return EEPROM.commit();
 }
