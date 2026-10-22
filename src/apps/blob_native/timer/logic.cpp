@@ -71,6 +71,7 @@ namespace blob_native
             return g_timer_ui.running ||
                    g_timer_ui.controls_visible ||
                    g_timer_ui.view == TimerView::TimerRun ||
+                   g_timer_ui.view == TimerView::TimerEnded ||
                    (g_timer_ui.total_ms > 0 && g_timer_ui.remaining_ms != g_timer_ui.total_ms);
         }
     } // namespace timer_internal
@@ -91,7 +92,11 @@ namespace blob_native
         {
             g_timer_ui.running = false;
             g_timer_ui.remaining_ms = 0;
-            g_timer_ui.controls_visible = true;
+            g_timer_ui.controls_visible = false;
+            if (g_timer_ui.view != TimerView::MainScreen)
+            {
+                g_timer_ui.view = TimerView::TimerEnded;
+            }
             return;
         }
 
@@ -101,14 +106,22 @@ namespace blob_native
     void timer_enter()
     {
         using namespace timer_internal;
-        g_timer_ui.view = timer_has_runtime_view() ? TimerView::TimerRun : TimerView::TimerSetup;
+        if (!timer_has_runtime_view())
+        {
+            g_timer_ui.view = TimerView::TimerSetup;
+        }
+        else
+        {
+            g_timer_ui.view = g_timer_ui.remaining_ms == 0 ? TimerView::TimerEnded : TimerView::TimerRun;
+        }
+        g_timer_ui.controls_visible = g_timer_ui.view == TimerView::TimerRun && !g_timer_ui.running;
     }
 
     void timer_exit()
     {
         using namespace timer_internal;
         g_timer_ui.view = TimerView::MainScreen;
-        g_timer_ui.controls_visible = false;
+        // Preserve paused controls so even an immediate full-duration pause survives reentry.
     }
 
     void timer_set_minutes(int minutes)
@@ -145,12 +158,21 @@ namespace blob_native
         using namespace timer_internal;
         if (g_timer_ui.running)
         {
+            timer_update_remaining(now_ms);
+            if (g_timer_ui.remaining_ms == 0) return;
             g_timer_ui.running = false;
+            g_timer_ui.controls_visible = true;
         }
-        else if (g_timer_ui.remaining_ms > 0)
+        else if (g_timer_ui.total_ms > 0)
         {
+            if (g_timer_ui.remaining_ms == 0)
+            {
+                timer_sync_total_ms();
+            }
             g_timer_ui.end_ms = now_ms + g_timer_ui.remaining_ms;
             g_timer_ui.running = true;
+            g_timer_ui.controls_visible = false;
+            g_timer_ui.view = TimerView::TimerRun;
         }
     }
 

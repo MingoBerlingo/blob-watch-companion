@@ -77,7 +77,7 @@ void drag_slider(lv_obj_t *slider, bool high)
     }
     release();
 }
-void set_duration(int seconds)
+void set_duration(int seconds, int minutes = 0)
 {
     // Drive the same LVGL change callbacks used by the on-device rollers.
     int roller_index = 0;
@@ -86,7 +86,7 @@ void set_duration(int seconds)
         auto *object = lv_obj_get_child(lv_scr_act(), i);
         if (lv_obj_check_type(object, &lv_roller_class))
         {
-            lv_roller_set_selected(object, roller_index++ == 0 ? 0 : seconds, LV_ANIM_OFF);
+            lv_roller_set_selected(object, roller_index++ == 0 ? minutes : seconds, LV_ANIM_OFF);
             lv_event_send(object, LV_EVENT_VALUE_CHANGED, nullptr);
         }
     }
@@ -126,30 +126,61 @@ bool run_scenarios(const std::filesystem::path &output)
     swipe(Gesture::Left);
     expect(lv_scr_act() == brightness_screen && lv_slider_get_value(slider) == 100, "Brightness survives leaving and returning");
     swipe(Gesture::Right);
+    set_duration(0, 10);
+    button("Start");
+    expect(timer_running() && timer_minutes() == 10, "Reference flow starts a ten minute timer");
+    capture("timer-reference-running");
+    click(120, 164);
+    expect(!timer_running() && timer_run_controls_visible(), "Reference pause shows the three icon actions");
+    capture("timer-reference-paused");
+    click(120, 164);
+    advance(600100);
+    step(100);
+    expect(timer_view() == TimerView::TimerEnded, "Reference countdown opens its ended screen");
+    capture("timer-reference-ended");
+    click(82, 138);
     set_duration(5);
     expect(timer_minutes() == 0 && timer_seconds() == 5, "LVGL roller callbacks configure a five second timer");
     button("Start");
     expect(timer_running() && timer_view() == TimerView::TimerRun, "Pointer click starts timer");
-    expect(find(lv_scr_act(), &lv_arc_class) != nullptr, "Running timer renders its arc");
+    expect(lv_obj_get_height(widget(&lv_label_class, "00:05")) >= 30, "Running time uses the large type from the reference");
     capture("timer-running");
     step(500);
     expect(timer_remaining_ms() < 5000 && timer_remaining_ms() > 0, "Simulated clock advances the countdown");
     click(120, 60);
-    expect(timer_run_controls_visible(), "Pointer click reveals timer controls");
-    button("Pause");
-    expect(!timer_running(), "Pointer click pauses timer");
+    expect(timer_running() && !timer_run_controls_visible(), "Background taps leave running timer unchanged");
+    click(120, 164);
+    expect(!timer_running() && timer_run_controls_visible(), "Orange pause button freezes timer and opens actions");
     const auto remaining = timer_remaining_ms();
     step(500);
     expect(timer_remaining_ms() == remaining, "Paused timer keeps remaining duration");
+    expect(lv_obj_get_height(widget(&lv_label_class)) < 25, "Paused time uses smaller type above the actions");
     capture("timer-paused");
-    button("Play");
-    expect(timer_running(), "Pointer click resumes timer");
+    click(82, 98);
+    expect(lv_scr_act() == blob_screen && !timer_running(), "Back action opens Blob with timer still paused");
+    step(500);
+    expect(timer_remaining_ms() == remaining, "Timer remains frozen while viewing Blob");
+    swipe(Gesture::Left);
+    expect(lv_scr_act() == timer_screen && timer_run_controls_visible(), "Returning to paused timer restores actions");
+    click(120, 164);
+    expect(timer_running() && !timer_run_controls_visible(), "Green play button resumes and hides actions");
     advance(remaining + 100);
     step(100);
-    expect(!timer_running() && timer_remaining_ms() == 0 && timer_run_controls_visible(), "Timer expiry stops countdown and shows controls");
+    expect(!timer_running() && timer_remaining_ms() == 0 && timer_view() == TimerView::TimerEnded, "Timer expiry opens the ended screen");
+    expect(find(lv_scr_act(), &lv_label_class, "Timer ended") != nullptr, "Ended screen announces completion");
+    expect(find(lv_scr_act(), &lv_label_class, "00:05") != nullptr, "Ended screen shows the original duration");
     capture("timer-expired");
-    button("Cancel");
-    expect(timer_view() == TimerView::TimerSetup && !timer_running(), "Cancel returns to timer setup");
+    click(158, 138);
+    expect(timer_running() && timer_remaining_ms() > 4500 && !timer_run_controls_visible(), "Orange repeat button restarts the original duration");
+    click(120, 164);
+    click(158, 98);
+    expect(timer_view() == TimerView::TimerSetup && !timer_running(), "Red cancel button returns to timer setup");
+    set_duration(1);
+    button("Start");
+    advance(1100);
+    step(100);
+    click(82, 138);
+    expect(timer_view() == TimerView::TimerSetup, "Ended back button returns to duration selection");
     set_duration(0);
     button("Start");
     expect(!timer_running() && timer_view() == TimerView::TimerSetup, "Zero duration does not start a timer");

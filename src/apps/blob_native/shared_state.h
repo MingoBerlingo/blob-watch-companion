@@ -24,6 +24,15 @@ namespace blob_native
     // Background color (RGB565). Accents come from the LVGL theme.
     constexpr uint16_t BG_COLOR = BLACK;
 
+    // Timer action palette (native RGB565), from:
+    // https://github.com/newdigate/rgb565_colors/blob/main/README.md
+    // The ring reuses the existing LVGL theme primary color.
+    constexpr uint16_t TIMER_PAUSE_COLOR = 0xFD20;  // Orange (web)
+    constexpr uint16_t TIMER_PLAY_COLOR = 0x67EC;   // Screamin Green
+    constexpr uint16_t TIMER_CANCEL_COLOR = 0xFAAE; // Fiery Rose
+    constexpr uint16_t TIMER_ENDED_TIME_COLOR = 0x52AA; // Davy's gray
+    constexpr uint16_t TIMER_BACK_COLOR = 0xBDF7;   // Silver (also used for paused time)
+
     // Respond to IMU tilt.
     constexpr bool BLOB_USE_IMU = true;
 

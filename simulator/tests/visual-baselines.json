@@ -4,8 +4,11 @@
   "brightness-low.bmp": "f6f2b5e96211663aedffc098e2deb2498eacf3f14526f5c8719b8253614d1b09",
   "brightness.bmp": "181abd51c8ba97f8bff87c7e37f75cc86990f42f501190c8a48a2dde77c0046b",
   "color-check.bmp": "4de61c8dc4a1409713483297f6bedc30a209cc61d1067f0870716559e8063b14",
-  "timer-expired.bmp": "64a5e8114cd728ab744ef1a40b9913e24cb3c81ffb42c11dce844b7f66d5016a",
-  "timer-paused.bmp": "381a7bad3fbba1ecb2c555ed5c34bb9087c41bab38955932f817cd912c75e106",
-  "timer-running.bmp": "04778eb420084bfeda443dc24011249a4347ca2536f653c51193c5b1f891e944",
+  "timer-expired.bmp": "672b50e9ce5c88142aa7255b47c5fba57fda812c61580c8dc294ba0a4ef22ad6",
+  "timer-paused.bmp": "b1d7121b595de08dcc91edb220c337d1711f33e00baf212f9cf9971d90514718",
+  "timer-reference-ended.bmp": "073b255568c10f60dcb57a57b964f1d5902b6403c7176f9b26709b4db7a50f55",
+  "timer-reference-paused.bmp": "0d6fd991e51c8f93a17bbdb83d49bc0d322f5b8d400a693f7b6da3e0dcc7fd56",
+  "timer-reference-running.bmp": "6581eca47c316fa3e3f9c8e514368c14df26e043ac743626cfa894e92197c2de",
+  "timer-running.bmp": "70ff811bd3c28398fd9653bd8543ed2286b6e96fa6caa3b3002ec9f1ba9677f2",
   "timer-setup.bmp": "a90fa24f84ce82587858080a15e59534412f3a13e3eaa6ddfdb4e5bbdc50d363"
 }

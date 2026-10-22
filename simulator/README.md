@@ -55,7 +55,8 @@ No window, USB board, running desktop session, or X server is needed. Tests use
 SDL's dummy video driver, a deterministic clock and the real firmware page loop.
 The integration contract runs each scenario twice and compares exact screenshots.
 It also checks committed visual baseline hashes to detect changes across runs.
-CTest additionally runs the existing isolated navigation regression.
+CTest additionally runs isolated navigation and timer-state regressions, including
+precise pause, millis rollover, immediate paused reentry and background expiry.
 
 Artifacts are under `simulator/build/screenshots/`:
 
@@ -68,8 +69,9 @@ writes BMP files and the report; the Python runner adds PNGs and baseline checks
 
 Coverage includes repeated and reverse swipes, screen identity, slider geometry,
 pointer dragging to 5% and 100%, backlight requests, retained brightness, timer
-roller callbacks, pointer clicks for start/pause/resume/cancel, deterministic
-countdown and expiry, zero duration, IMU clamping, RGB565 byte order, circular
+roller callbacks, pointer clicks for start/pause/resume/cancel, paused back/return, the ended
+screen with original duration and repeat/back actions, deterministic countdown
+and expiry, zero duration, IMU clamping, RGB565 byte order, circular
 masking, window resize/letterboxing, SDL mouse gestures and lost-focus release.
 Timer duration setup sends real LVGL roller change events; it does not currently
 assert the physical pointer mechanics of roller scrolling.

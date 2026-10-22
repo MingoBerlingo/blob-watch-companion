@@ -11,6 +11,7 @@ namespace blob_native
         MainScreen = 0,
         TimerSetup,
         TimerRun,
+        TimerEnded,
     };
 
     // Lifecycle
