@@ -1,11 +1,14 @@
 #include "apps/blob_native/pages/timer/timer_page.h"
 
+#include <Arduino.h>
 #include <stdio.h>
 
 #include "lvgl.h"
 
 #include "apps/blob_native/lv_port/lv_port.h"
+#include "apps/blob_native/pages/page_manager.h"
 #include "apps/blob_native/shared_state.h"
+#include "apps/blob_native/timer/runtime_draw.h"
 #include "apps/blob_native/timer/view.h"
 
 namespace blob_native
@@ -13,6 +16,58 @@ namespace blob_native
 
     namespace
     {
+        // Reuse Montserrat bitmaps, but give every digit the same advance.
+        // Keep this font local to duration labels so other UI text is unchanged.
+        struct TabularFont
+        {
+            lv_font_t font;
+            const lv_font_t *base;
+            uint16_t digit_width = 0;
+
+            explicit TabularFont(const lv_font_t *source) : font(*source), base(source)
+            {
+                for (uint32_t digit = '0'; digit <= '9'; ++digit)
+                {
+                    const auto width = lv_font_get_glyph_width(base, digit, 0);
+                    if (width > digit_width)
+                        digit_width = width;
+                }
+                font.dsc = this;
+                font.get_glyph_dsc = describe;
+                font.get_glyph_bitmap = bitmap;
+            }
+
+            static bool describe(const lv_font_t *font, lv_font_glyph_dsc_t *glyph,
+                                 uint32_t letter, uint32_t next)
+            {
+                const auto *self = static_cast<const TabularFont *>(font->dsc);
+                // No kerning: changing a neighbouring digit must not shift a cell.
+                if (!self->base->get_glyph_dsc(self->base, glyph, letter, 0))
+                    return false;
+                if (letter >= '0' && letter <= '9')
+                {
+                    glyph->ofs_x += (self->digit_width - glyph->adv_w) / 2;
+                    glyph->adv_w = self->digit_width;
+                }
+                (void)next;
+                return true;
+            }
+
+            static const uint8_t *bitmap(const lv_font_t *font, uint32_t letter)
+            {
+                const auto *self = static_cast<const TabularFont *>(font->dsc);
+                return self->base->get_glyph_bitmap(self->base, letter);
+            }
+        };
+
+        const lv_font_t *duration_font(bool ended, bool controls)
+        {
+            static const TabularFont large(&lv_font_montserrat_32);
+            static const TabularFont small(&lv_font_montserrat_14);
+            static const TabularFont completed(&lv_font_montserrat_16);
+            return ended ? &completed.font : (controls ? &small.font : &large.font);
+        }
+
         constexpr int kRollerOptions = 60; // "00" .. "59"
 
         lv_obj_t *g_screen = nullptr;
@@ -21,21 +76,23 @@ namespace blob_native
         lv_obj_t *g_seconds_roller = nullptr;
         lv_obj_t *g_start_btn = nullptr;
 
-        lv_obj_t *g_arc = nullptr;
+        lv_obj_t *g_ring = nullptr;
+        lv_obj_t *g_pause_btn = nullptr;
         lv_obj_t *g_time_label = nullptr;
-        lv_obj_t *g_msgbox = nullptr;
         lv_obj_t *g_back_btn = nullptr;
         lv_obj_t *g_play_btn = nullptr;
         lv_obj_t *g_cancel_btn = nullptr;
-        lv_obj_t *g_play_label = nullptr;
+        lv_obj_t *g_ended_label = nullptr;
+        lv_obj_t *g_ended_back_btn = nullptr;
+        lv_obj_t *g_repeat_btn = nullptr;
 
-        // Roller options string ("00\n01\n...\n99") and msgbox button labels.
+        // Roller options string ("00\n01\n...\n59").
         char g_roller_options[4 * kRollerOptions];
 
         // Change tracking.
         int32_t g_last_display_seconds = -1;
-        int g_last_arc_value = -1;
-        bool g_last_running = false;
+        bool g_last_controls = false;
+        TimerView g_last_view = TimerView::MainScreen;
 
         lv_color_t col(uint16_t c)
         {
@@ -44,6 +101,9 @@ namespace blob_native
 
         void set_visible(lv_obj_t *obj, bool visible)
         {
+            const bool is_visible = !lv_obj_has_flag(obj, LV_OBJ_FLAG_HIDDEN);
+            if (is_visible == visible)
+                return;
             if (visible)
                 lv_obj_clear_flag(obj, LV_OBJ_FLAG_HIDDEN);
             else
@@ -79,19 +139,10 @@ namespace blob_native
             timer_start(millis());
         }
 
-        void on_screen_clicked(lv_event_t *e)
-        {
-            (void)e;
-            if (timer_view() == TimerView::TimerRun)
-            {
-                timer_toggle_controls();
-            }
-        }
-
         void on_back_clicked(lv_event_t *e)
         {
             (void)e;
-            timer_hide_controls();
+            page_manager_show_blob();
         }
 
         void on_play_clicked(lv_event_t *e)
@@ -106,34 +157,11 @@ namespace blob_native
             timer_cancel();
         }
 
-        void update_play_button(bool running)
-        {
-            lv_label_set_text(g_play_label, running ? "Pause" : "Play");
-        }
-
-        lv_obj_t *add_control_button(lv_obj_t *parent, const char *text, lv_color_t color)
-        {
-            lv_obj_t *btn = lv_btn_create(parent);
-            lv_obj_set_size(btn, 68, 48);
-            lv_obj_set_style_pad_hor(btn, 4, 0);
-            lv_obj_set_style_bg_color(btn, color, 0);
-            lv_obj_set_style_bg_color(btn, lv_color_darken(color, LV_OPA_30), LV_STATE_PRESSED);
-
-            lv_obj_t *label = lv_label_create(btn);
-            lv_label_set_text(label, text);
-            lv_obj_set_style_text_font(label, &lv_font_montserrat_16, 0);
-            lv_obj_set_style_text_color(label, lv_color_white(), 0);
-            lv_obj_center(label);
-
-            return btn;
-        }
-
         void build_screen()
         {
             build_roller_options();
 
             g_screen = lv_obj_create(nullptr);
-            lv_obj_add_flag(g_screen, LV_OBJ_FLAG_CLICKABLE);
             lv_obj_clear_flag(g_screen, LV_OBJ_FLAG_SCROLLABLE);
             lv_obj_set_style_bg_color(g_screen, col(BG_COLOR), 0);
             lv_obj_set_style_bg_opa(g_screen, LV_OPA_COVER, 0);
@@ -161,49 +189,34 @@ namespace blob_native
             lv_label_set_text(start_label, "Start");
             lv_obj_center(start_label);
 
-            // --- Run view ---
-            g_arc = lv_arc_create(g_screen);
-            lv_obj_clear_flag(g_arc, LV_OBJ_FLAG_CLICKABLE);
-            lv_obj_set_pos(g_arc, 2, 2);
-            lv_obj_set_size(g_arc, 236, 236);
-            lv_obj_set_style_pad_all(g_arc, 0, 0);
-            lv_arc_set_bg_angles(g_arc, 0, 360);
-            lv_arc_set_rotation(g_arc, 270);
-            lv_arc_set_range(g_arc, 0, 10000);
-            lv_arc_set_value(g_arc, 0);
-            lv_arc_set_mode(g_arc, LV_ARC_MODE_NORMAL);
-            lv_obj_set_style_arc_width(g_arc, 8, LV_PART_MAIN);
-            lv_obj_set_style_arc_width(g_arc, 8, LV_PART_INDICATOR);
-            lv_obj_set_style_arc_color(g_arc, col(BG_COLOR), LV_PART_MAIN);
-            lv_obj_set_style_arc_color(g_arc, lv_theme_get_color_primary(g_screen), LV_PART_INDICATOR);
-            lv_obj_set_style_bg_opa(g_arc, LV_OPA_TRANSP, 0);
-            lv_obj_remove_style(g_arc, nullptr, LV_PART_KNOB);
+            // --- Run view: shared ring with distinct running and paused controls. ---
+            g_ring = timer_create_progress_ring(g_screen);
 
             g_time_label = lv_label_create(g_screen);
             lv_obj_clear_flag(g_time_label, LV_OBJ_FLAG_CLICKABLE);
-            lv_obj_set_style_text_font(g_time_label, &lv_font_montserrat_24, 0);
-            lv_obj_align(g_time_label, LV_ALIGN_CENTER, 0, 0);
+            lv_obj_set_style_text_font(g_time_label, duration_font(false, false), 0);
+            lv_obj_set_style_text_color(g_time_label, lv_color_white(), 0);
 
-            // Controls message box (Back / Pause-Play / Cancel) in a flex column.
-            g_msgbox = lv_msgbox_create(g_screen, "", "", nullptr, false);
-            lv_obj_set_width(g_msgbox, 120);
-            lv_obj_center(g_msgbox);
+            g_pause_btn = timer_create_icon_button(g_screen, TimerIcon::Pause, TIMER_PAUSE_COLOR, 120, 164);
+            g_back_btn = timer_create_icon_button(g_screen, TimerIcon::Back, TIMER_BACK_COLOR, 82, 98);
+            g_cancel_btn = timer_create_icon_button(g_screen, TimerIcon::Cancel, TIMER_CANCEL_COLOR, 158, 98);
+            g_play_btn = timer_create_icon_button(g_screen, TimerIcon::Play, TIMER_PLAY_COLOR, 120, 164);
 
-            lv_obj_t *controls_content = lv_msgbox_get_content(g_msgbox);
-            lv_obj_set_flex_flow(controls_content, LV_FLEX_FLOW_COLUMN);
-            lv_obj_set_flex_align(controls_content, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-            lv_obj_set_style_pad_row(controls_content, 8, 0);
-
-            g_back_btn = add_control_button(controls_content, "Back", lv_color_hex(0x616161));
-            g_play_btn = add_control_button(controls_content, "Play", lv_color_hex(0xFF9800));
-            g_cancel_btn = add_control_button(controls_content, "Cancel", lv_color_hex(0xF44336));
-            g_play_label = lv_obj_get_child(g_play_btn, 0);
-
+            lv_obj_add_event_cb(g_pause_btn, on_play_clicked, LV_EVENT_CLICKED, nullptr);
             lv_obj_add_event_cb(g_back_btn, on_back_clicked, LV_EVENT_CLICKED, nullptr);
             lv_obj_add_event_cb(g_play_btn, on_play_clicked, LV_EVENT_CLICKED, nullptr);
             lv_obj_add_event_cb(g_cancel_btn, on_cancel_clicked, LV_EVENT_CLICKED, nullptr);
 
-            lv_obj_add_event_cb(g_screen, on_screen_clicked, LV_EVENT_CLICKED, nullptr);
+            // --- Ended view: duration, completion message, back to setup and repeat. ---
+            g_ended_label = lv_label_create(g_screen);
+            lv_label_set_text(g_ended_label, "Timer ended");
+            lv_obj_set_style_text_font(g_ended_label, &lv_font_montserrat_20, 0);
+            lv_obj_set_style_text_color(g_ended_label, lv_color_white(), 0);
+            lv_obj_align(g_ended_label, LV_ALIGN_TOP_MID, 0, 66);
+            g_ended_back_btn = timer_create_icon_button(g_screen, TimerIcon::Back, TIMER_BACK_COLOR, 82, 138);
+            g_repeat_btn = timer_create_icon_button(g_screen, TimerIcon::Repeat, TIMER_PAUSE_COLOR, 158, 138);
+            lv_obj_add_event_cb(g_ended_back_btn, on_cancel_clicked, LV_EVENT_CLICKED, nullptr);
+            lv_obj_add_event_cb(g_repeat_btn, on_play_clicked, LV_EVENT_CLICKED, nullptr);
         }
 
         void sync(bool force)
@@ -212,13 +225,20 @@ namespace blob_native
             const bool controls = timer_run_controls_visible();
             const bool show_setup = (view == TimerView::TimerSetup);
             const bool show_run = (view == TimerView::TimerRun);
+            const bool show_ended = (view == TimerView::TimerEnded);
 
             set_visible(g_minutes_roller, show_setup);
             set_visible(g_seconds_roller, show_setup);
             set_visible(g_start_btn, show_setup);
-            set_visible(g_arc, show_run);
-            set_visible(g_time_label, show_run);
-            set_visible(g_msgbox, show_run && controls);
+            set_visible(g_ring, show_run);
+            set_visible(g_time_label, show_run || show_ended);
+            set_visible(g_pause_btn, show_run && !controls);
+            set_visible(g_back_btn, show_run && controls);
+            set_visible(g_cancel_btn, show_run && controls);
+            set_visible(g_play_btn, show_run && controls);
+            set_visible(g_ended_label, show_ended);
+            set_visible(g_ended_back_btn, show_ended);
+            set_visible(g_repeat_btn, show_ended);
 
             if (show_setup && force)
             {
@@ -226,42 +246,34 @@ namespace blob_native
                 lv_roller_set_selected(g_seconds_roller, (uint16_t)timer_seconds(), LV_ANIM_OFF);
             }
 
-            if (show_run)
+            if (show_run || show_ended)
             {
-                const int32_t disp = timer_display_seconds_value();
-                if (force || disp != g_last_display_seconds)
+                const int32_t disp = show_ended ? timer_total_seconds() : timer_display_seconds_value();
+                bool label_changed = force || disp != g_last_display_seconds;
+                if (label_changed)
                 {
-                    char buf[12];
+                    char buf[16];
                     snprintf(buf, sizeof(buf), "%02ld:%02ld", (long)(disp / 60), (long)(disp % 60));
                     lv_label_set_text(g_time_label, buf);
                     g_last_display_seconds = disp;
                 }
 
-                const uint32_t total = timer_total_ms();
-                const uint32_t remaining = timer_remaining_ms();
-                int value = 0;
-                if (total > 0)
+                if (show_run)
+                    timer_refresh_progress_ring(g_ring, timer_remaining_ms(), timer_total_ms());
+                if (force || controls != g_last_controls || view != g_last_view)
                 {
-                    const int64_t scaled = ((int64_t)remaining * 10000) / (int64_t)total;
-                    value = (int)scaled;
-                    if (value < 0)
-                        value = 0;
-                    if (value > 10000)
-                        value = 10000;
+                    lv_obj_set_style_text_font(g_time_label, duration_font(show_ended, controls), 0);
+                    lv_obj_set_style_text_color(g_time_label, show_ended ? col(TIMER_ENDED_TIME_COLOR) : (controls ? col(TIMER_BACK_COLOR) : lv_color_white()), 0);
+                    g_last_controls = controls;
+                    label_changed = true;
                 }
-                if (force || value != g_last_arc_value)
+                // Re-align only after text or view changes, avoiding redundant style invalidation.
+                if (label_changed)
                 {
-                    lv_arc_set_value(g_arc, (int16_t)value);
-                    g_last_arc_value = value;
-                }
-
-                const bool running = timer_running();
-                if (force || running != g_last_running)
-                {
-                    update_play_button(running);
-                    g_last_running = running;
+                    lv_obj_align(g_time_label, LV_ALIGN_TOP_MID, 0, show_ended ? 44 : (controls ? 42 : 70));
                 }
             }
+            g_last_view = view;
         }
     } // namespace
 
@@ -278,7 +290,7 @@ namespace blob_native
 
     void timer_page_hide()
     {
-        // Nothing to do; the page manager stops driving LVGL while the blob page owns the framebuffer.
+        // Retain the screen and controls for the next visit.
     }
 
     void timer_page_tick(uint32_t now_ms)

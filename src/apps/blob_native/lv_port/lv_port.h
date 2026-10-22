@@ -10,6 +10,8 @@ namespace blob_native
 
     void lv_port_init();
     void lv_port_handler();
+    // Consume the navigating contact, including its eventual release.
+    void lv_port_block_touch_until_release();
 
     // Convert a native RGB565 color (as used elsewhere in this project, e.g.
     // the GUI_Paint.h constants) to an LVGL color, preserving the exact 5-6-5

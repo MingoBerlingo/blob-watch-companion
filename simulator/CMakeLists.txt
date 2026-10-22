@@ -36,7 +36,7 @@ add_executable(blob_simulator
     "${APP}/lv_port/lv_port.cpp" "${APP}/lv_port/theme.cpp"
     "${APP}/pages/page_manager.cpp" "${APP}/pages/blob/blob_page.cpp"
     "${APP}/pages/timer/timer_page.cpp" "${APP}/pages/brightness/brightness_page.cpp"
-    "${APP}/timer/logic.cpp" "${APP}/blob/shape.cpp" "${APP}/blob/face.cpp")
+    "${APP}/timer/runtime_draw.cpp" "${APP}/timer/logic.cpp" "${APP}/blob/shape.cpp" "${APP}/blob/face.cpp")
 target_compile_definitions(blob_simulator PRIVATE BLOB_DESKTOP_SIMULATOR)
 target_include_directories(blob_simulator PRIVATE "${APP_ROOT}" "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(blob_simulator PRIVATE lvgl_sim SDL2::SDL2)
@@ -49,3 +49,6 @@ add_test(NAME simulator_integration COMMAND "${Python3_EXECUTABLE}"
     "${CMAKE_CURRENT_BINARY_DIR}/screenshots")
 add_test(NAME navigation_regression COMMAND "${Python3_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_page_navigation.py")
+
+add_test(NAME timer_logic_regression COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../tests/test_timer_logic.py")

@@ -1,7 +1,7 @@
 name: Desktop simulator
+# Manual only: local testing is the default; do not spend Actions minutes automatically.
 on:
-  push:
-  pull_request:
+  workflow_dispatch:
 jobs:
   simulator:
     runs-on: ubuntu-latest

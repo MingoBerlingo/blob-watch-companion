@@ -17,6 +17,8 @@ namespace blob_native
         lv_color_t g_draw_buf_1[DISP_BUF_PIXELS];
         lv_disp_drv_t g_disp_drv;
         lv_indev_drv_t g_indev_drv;
+        lv_indev_t *g_indev = nullptr;
+        bool g_touch_blocked = false;
 
         void flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p)
         {
@@ -31,7 +33,14 @@ namespace blob_native
         {
             (void)drv;
             WaveshareNativeTouchSample sample = {false, 0, 0, WaveshareNativeTouchGesture::None};
-            if (waveshare_native_poll_touch(&sample) && sample.touching)
+            const bool touching = waveshare_native_poll_touch(&sample) && sample.touching;
+            if (g_touch_blocked)
+            {
+                if (!touching) g_touch_blocked = false;
+                data->state = LV_INDEV_STATE_RELEASED;
+                return;
+            }
+            if (touching)
             {
                 data->state = LV_INDEV_STATE_PRESSED;
                 data->point.x = (lv_coord_t)sample.x;
@@ -61,9 +70,16 @@ namespace blob_native
         lv_indev_drv_init(&g_indev_drv);
         g_indev_drv.type = LV_INDEV_TYPE_POINTER;
         g_indev_drv.read_cb = input_read_cb;
-        lv_indev_drv_register(&g_indev_drv);
+        g_touch_blocked = false;
+        g_indev = lv_indev_drv_register(&g_indev_drv);
 
         lv_port_apply_theme();
+    }
+
+    void lv_port_block_touch_until_release()
+    {
+        g_touch_blocked = true;
+        if (g_indev) lv_indev_wait_release(g_indev);
     }
 
     void lv_port_handler()

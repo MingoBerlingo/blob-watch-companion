@@ -13,6 +13,13 @@ namespace simulator {
 namespace {
 int passed = 0;
 std::vector<std::string> failures;
+int g_flush_calls = 0;
+void (*g_original_flush)(lv_disp_drv_t *, const lv_area_t *, lv_color_t *) = nullptr;
+void count_flush(lv_disp_drv_t *driver, const lv_area_t *area, lv_color_t *pixels)
+{
+    ++g_flush_calls;
+    g_original_flush(driver, area, pixels);
+}
 void expect(bool condition, const std::string &message)
 {
     if (condition) { ++passed; std::cout << "PASS " << message << '\n'; }
@@ -77,7 +84,7 @@ void drag_slider(lv_obj_t *slider, bool high)
     }
     release();
 }
-void set_duration(int seconds)
+void set_duration(int seconds, int minutes = 0)
 {
     // Drive the same LVGL change callbacks used by the on-device rollers.
     int roller_index = 0;
@@ -86,7 +93,7 @@ void set_duration(int seconds)
         auto *object = lv_obj_get_child(lv_scr_act(), i);
         if (lv_obj_check_type(object, &lv_roller_class))
         {
-            lv_roller_set_selected(object, roller_index++ == 0 ? 0 : seconds, LV_ANIM_OFF);
+            lv_roller_set_selected(object, roller_index++ == 0 ? minutes : seconds, LV_ANIM_OFF);
             lv_event_send(object, LV_EVENT_VALUE_CHANGED, nullptr);
         }
     }
@@ -112,7 +119,7 @@ bool run_scenarios(const std::filesystem::path &output)
     auto *slider = widget(&lv_slider_class);
     expect(lv_obj_get_width(slider) == 60 && lv_obj_get_height(slider) == 150, "Slider is vertical and 60 pixels wide");
     expect(lv_slider_get_value(slider) == 70, "Brightness starts at 70 percent");
-    expect(lv_obj_get_child_cnt(brightness_screen) == 2 && find(brightness_screen, &lv_label_class, "brigthness"), "Brightness contains only its title and slider");
+    expect(lv_obj_get_child_cnt(brightness_screen) == 2 && !find(brightness_screen, &lv_label_class, nullptr), "Brightness contains a sun and slider without text");
     capture("brightness");
     drag_slider(slider, false);
     expect(lv_slider_get_value(slider) == 5 && brightness() == 5, "Pointer drag reaches minimum and updates backlight request");
@@ -126,30 +133,74 @@ bool run_scenarios(const std::filesystem::path &output)
     swipe(Gesture::Left);
     expect(lv_scr_act() == brightness_screen && lv_slider_get_value(slider) == 100, "Brightness survives leaving and returning");
     swipe(Gesture::Right);
+    set_duration(0, 10);
+    button("Start");
+    expect(timer_running() && timer_minutes() == 10, "Reference flow starts a ten minute timer");
+    const auto fixed_digits = [](lv_obj_t *label) {
+        const auto *font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
+        const auto width = lv_font_get_glyph_width(font, '0', 0);
+        for (uint32_t digit = '0'; digit <= '9'; ++digit) {
+            for (uint32_t next = '0'; next <= '9'; ++next)
+                if (lv_font_get_glyph_width(font, digit, next) != width) return false;
+            if (lv_font_get_glyph_width(font, digit, ':') != width) return false;
+        }
+        return true;
+    };
+    expect(fixed_digits(widget(&lv_label_class, "10:00")), "Running countdown uses fixed-width digits without kerning");
+    capture("timer-reference-running");
+    click(120, 164);
+    expect(!timer_running() && timer_run_controls_visible(), "Reference pause shows the three icon actions");
+    expect(fixed_digits(widget(&lv_label_class, "10:00")), "Paused countdown uses fixed-width digits");
+    capture("timer-reference-paused");
+    click(120, 164);
+    advance(600100);
+    step(100);
+    expect(timer_view() == TimerView::TimerEnded, "Reference countdown opens its ended screen");
+    expect(fixed_digits(widget(&lv_label_class, "10:00")), "Ended duration uses fixed-width digits");
+    capture("timer-reference-ended");
+    click(82, 138);
     set_duration(5);
     expect(timer_minutes() == 0 && timer_seconds() == 5, "LVGL roller callbacks configure a five second timer");
     button("Start");
     expect(timer_running() && timer_view() == TimerView::TimerRun, "Pointer click starts timer");
-    expect(find(lv_scr_act(), &lv_arc_class) != nullptr, "Running timer renders its arc");
+    expect(lv_obj_get_height(widget(&lv_label_class, "00:05")) >= 30, "Running time uses the large type from the reference");
     capture("timer-running");
     step(500);
     expect(timer_remaining_ms() < 5000 && timer_remaining_ms() > 0, "Simulated clock advances the countdown");
     click(120, 60);
-    expect(timer_run_controls_visible(), "Pointer click reveals timer controls");
-    button("Pause");
-    expect(!timer_running(), "Pointer click pauses timer");
+    expect(timer_running() && !timer_run_controls_visible(), "Background taps leave running timer unchanged");
+    click(120, 164);
+    expect(!timer_running() && timer_run_controls_visible(), "Orange pause button freezes timer and opens actions");
     const auto remaining = timer_remaining_ms();
     step(500);
     expect(timer_remaining_ms() == remaining, "Paused timer keeps remaining duration");
+    expect(lv_obj_get_height(widget(&lv_label_class)) < 25, "Paused time uses smaller type above the actions");
     capture("timer-paused");
-    button("Play");
-    expect(timer_running(), "Pointer click resumes timer");
+    click(82, 98);
+    expect(lv_scr_act() == blob_screen && !timer_running(), "Back action opens Blob with timer still paused");
+    step(500);
+    expect(timer_remaining_ms() == remaining, "Timer remains frozen while viewing Blob");
+    swipe(Gesture::Left);
+    expect(lv_scr_act() == timer_screen && timer_run_controls_visible(), "Returning to paused timer restores actions");
+    click(120, 164);
+    expect(timer_running() && !timer_run_controls_visible(), "Green play button resumes and hides actions");
     advance(remaining + 100);
     step(100);
-    expect(!timer_running() && timer_remaining_ms() == 0 && timer_run_controls_visible(), "Timer expiry stops countdown and shows controls");
+    expect(!timer_running() && timer_remaining_ms() == 0 && timer_view() == TimerView::TimerEnded, "Timer expiry opens the ended screen");
+    expect(find(lv_scr_act(), &lv_label_class, "Timer ended") != nullptr, "Ended screen announces completion");
+    expect(find(lv_scr_act(), &lv_label_class, "00:05") != nullptr, "Ended screen shows the original duration");
     capture("timer-expired");
-    button("Cancel");
-    expect(timer_view() == TimerView::TimerSetup && !timer_running(), "Cancel returns to timer setup");
+    click(158, 138);
+    expect(timer_running() && timer_remaining_ms() > 4500 && !timer_run_controls_visible(), "Orange repeat button restarts the original duration");
+    click(120, 164);
+    click(158, 98);
+    expect(timer_view() == TimerView::TimerSetup && !timer_running(), "Red cancel button returns to timer setup");
+    set_duration(1);
+    button("Start");
+    advance(1100);
+    step(100);
+    click(82, 138);
+    expect(timer_view() == TimerView::TimerSetup, "Ended back button returns to duration selection");
     set_duration(0);
     button("Start");
     expect(!timer_running() && timer_view() == TimerView::TimerSetup, "Zero duration does not start a timer");
@@ -220,6 +271,37 @@ bool run_scenarios(const std::filesystem::path &output)
     handle_events(); // Both transitions arrive before one poll.
     step(100);
     expect(timer_running(), "Batched SDL down and up activate the real Start button");
+    click(120, 164); // Pause before checking idle rendering and the next short tap.
+    step(100);
+    auto *display_driver = lv_disp_get_default()->driver;
+    g_original_flush = display_driver->flush_cb;
+    g_flush_calls = 0;
+    display_driver->flush_cb = count_flush;
+    step(100);
+    display_driver->flush_cb = g_original_flush;
+    expect(g_flush_calls == 0, "Paused timer does not redraw unchanged controls");
+
+    // A short press immediately after a poll is the worst case for sampling.
+    lv_timer_reset(lv_indev_get_next(nullptr)->driver->read_timer);
+    set_touch({true, 120, 164, Gesture::None});
+    step(10);
+    release();
+    expect(timer_running() && !timer_run_controls_visible(), "Ten millisecond tap resumes the paused timer");
+    click(120, 164);
+    const auto previous_brightness = brightness();
+    set_touch({true, 120, 190, Gesture::Left});
+    step(100);
+    set_touch({true, 120, 80, Gesture::None});
+    step(100);
+    expect(brightness() == previous_brightness, "Held swipe cannot drag destination brightness slider");
+    release();
+    expect(brightness() == previous_brightness, "Releasing a swipe leaves destination brightness unchanged");
+    set_touch({true, 120, 164, Gesture::Right});
+    step(100);
+    release();
+    expect(!timer_running(), "Held swipe and release cannot activate destination Play button");
+    click(120, 164);
+    expect(timer_running(), "Fresh tap works immediately after swipe release");
     std::ofstream report(output / "report.json");
     report << "{\"passed\":" << passed << ",\"failed\":" << failures.size() << ",\"failures\":[";
     for (size_t i = 0; i < failures.size(); ++i) report << (i ? "," : "") << '"' << failures[i] << '"';

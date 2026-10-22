@@ -42,6 +42,7 @@ namespace blob_native
                 return;
             }
             g_swipe_consumed = true;
+            lv_port_block_touch_until_release();
 
             if (g_page == Page::Blob && touch.gesture == WaveshareNativeTouchGesture::Left)
             {
@@ -52,10 +53,7 @@ namespace blob_native
             }
             else if (g_page == Page::Timer && touch.gesture == WaveshareNativeTouchGesture::Right)
             {
-                timer_exit();
-                timer_page_hide();
-                blob_page_show();
-                g_page = Page::Blob;
+                page_manager_show_blob();
             }
             else if (g_page == Page::Timer && touch.gesture == WaveshareNativeTouchGesture::Left)
             {
@@ -73,6 +71,18 @@ namespace blob_native
             }
         }
     } // namespace
+
+    void page_manager_show_blob()
+    {
+        if (g_page != Page::Timer)
+        {
+            return;
+        }
+        timer_exit();
+        timer_page_hide();
+        blob_page_show();
+        g_page = Page::Blob;
+    }
 
     void page_manager_init()
     {

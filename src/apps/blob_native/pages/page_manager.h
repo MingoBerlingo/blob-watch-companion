@@ -8,6 +8,7 @@ namespace blob_native
 
     void page_manager_init();
     void page_manager_loop();
+    void page_manager_show_blob();
 
 } // namespace blob_native
 
