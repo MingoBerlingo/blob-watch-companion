@@ -179,7 +179,9 @@ namespace blob_native
         if (!isfinite(target_x) || !isfinite(target_y)) return;
         const float dx=target_x-body.arena_x, dy=target_y-body.arena_y;
         const float distance=sqrtf(dx*dx+dy*dy);
-        const float limit=fmaxf(0,body.arena_radius-body.rest_radius);
+        // A small overlap lets the soft body press into the rim and deform;
+        // clamping at the rigid-fit radius prevented real contact.
+        const float limit=fmaxf(0,body.arena_radius-body.rest_radius+8.0f);
         if (distance>limit)
         {
             target_x=body.arena_x+dx*limit/distance;

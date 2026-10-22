@@ -199,10 +199,10 @@ namespace blob_native
                 g_last_blob_ms = now;
                 float tilt_x = 0, tilt_y = 0;
                 if (BLOB_USE_IMU) waveshare_native_read_tilt(&tilt_x, &tilt_y);
-                // Original accelerometer-to-position mapping, now driving the
+                // Original accelerometer axes with expanded sensitivity, driving the
                 // soft body's center through its fixed-step damped controller.
-                const float target_x=CENTER_X+tilt_y*(CENTER_X-BLOB_RADIUS-6.0f);
-                const float target_y=CENTER_Y-tilt_x*(CENTER_Y-BLOB_RADIUS-6.0f);
+                const float target_x=CENTER_X+tilt_y*BLOB_TILT_SENSITIVITY*(CENTER_X-BLOB_RADIUS-6.0f);
+                const float target_y=CENTER_Y-tilt_x*BLOB_TILT_SENSITIVITY*(CENTER_Y-BLOB_RADIUS-6.0f);
                 soft_body_follow(g_soft_body,elapsed,target_x,target_y);
                 float cosine,sine;
                 soft_body_rotation(g_soft_body,&cosine,&sine);

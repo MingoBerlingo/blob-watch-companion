@@ -207,14 +207,15 @@ volume constraint or general self-collision solver.
 
 Movement again uses the original accelerometer-to-position mapping:
 
-- Target X = screen center X + accelerometer Y * 64 px.
-- Target Y = screen center Y - accelerometer X * 64 px.
+- Target X = screen center X + accelerometer Y * 64 px * 3.5.
+- Target Y = screen center Y - accelerometer X * 64 px * 3.5.
 - Holding a tilt settles at the target; flat input recenters the body.
 - Linear acceleration also changes that target, as in the original firmware.
 
 The original spring-like controller is approximated at fixed 8 ms steps with
-stiffness 585.9375/s² and damping 15.625/s, plus the existing air drag. Target
-positions are projected into the available circular center region; control
+stiffness 585.9375/s² and damping 15.625/s, plus the existing air drag. `BLOB_TILT_SENSITIVITY` (currently 3.5) makes about 20° enough for rim contact. Target
+positions allow 8 px of overlap beyond the rigid-fit circular center region so the
+soft body can press against the wall and deform; control
 acceleration is capped at 4000 px/s² and center speed at 400 px/s. The response is
 therefore similar to the original behavior, not numerically identical. Internal
 deformation and contact forces are retained. At most eight steps are processed

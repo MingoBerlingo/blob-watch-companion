@@ -38,6 +38,7 @@ namespace blob_native
     constexpr bool BLOB_USE_IMU = true;
     // Local prototype: a physical contour instead of procedural sine waves.
     constexpr bool BLOB_SOFT_BODY_ENABLED = true;
+    constexpr float BLOB_TILT_SENSITIVITY = 3.5f; // Rim contact at about 20 degrees.
 
     // Glow styling (disabled by default for a crisper, faster outline).
     constexpr bool BLOB_GLOW_ENABLED = false;

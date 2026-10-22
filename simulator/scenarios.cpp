@@ -314,6 +314,10 @@ bool run_scenarios(const std::filesystem::path &output)
     set_tilt(0, 0);
     step(2000);
     capture("softbody-settled");
+    set_tilt(0, 0.35f); // About twenty degrees: ordinary use, not a vertical screen.
+    step(800);
+    capture("softbody-moderate-tilt");
+    set_tilt(0, 0);
     std::ofstream report(output / "report.json");
     report << "{\"passed\":" << passed << ",\"failed\":" << failures.size() << ",\"failures\":[";
     for (size_t i = 0; i < failures.size(); ++i) report << (i ? "," : "") << '"' << failures[i] << '"';
