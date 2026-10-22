@@ -30,7 +30,7 @@
 - [x] Update shared configuration, timer logic and back navigation; verify host tests.
 - [x] Implement primitive icon/ring drawing and running/paused layouts while leaving setup untouched.
 - [x] Update simulator scenarios to exercise real pointer buttons, back/return, cancel, restart and unchanged non-timer screens. Inspect screenshots before changing timer visual baselines.
-- [ ] Run CTest, pio run and independent review; fix material findings, commit/push and open a PR into feat--timer.
+- [x] Run CTest, pio run and independent review; fix material findings, commit/push and open a PR into feat--timer.
 
 ## Execution record
 - PR #3 merged into feat--timer at b86b6f9. Work on codex/timer-running-controls.
@@ -41,3 +41,5 @@
 - Validation: 43 integration checks and all 3 CTest targets pass; host timer tests include rollover, precise pause, full-duration reentry, pause-at-expiry and background expiry.
 - Visual review: inspected 10:00 running, paused and ended renders against both supplied images. Existing setup, Blob, Brightness and color-boundary captures retain their original hashes.
 - Firmware: pio run passes (45,672 bytes RAM; 318,372 bytes flash). Independent reviewer reports no material findings.
+
+- Published branch codex/timer-running-controls and opened PR #4 targeting feat--timer. GitHub Actions runs the same integration/visual checks remotely.
