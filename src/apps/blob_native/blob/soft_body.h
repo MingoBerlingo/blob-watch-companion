@@ -18,12 +18,14 @@ namespace blob_native
         float rest_x[SOFT_BODY_POINTS], rest_y[SOFT_BODY_POINTS];
         float rest_edge[SOFT_BODY_POINTS];
         float center_x, center_y, velocity_x, velocity_y;
-        float arena_x, arena_y, arena_radius;
+        float arena_x, arena_y, arena_radius, rest_radius;
         uint32_t remainder_ms;
     };
 
     void soft_body_reset(SoftBody &body, float center_x, float center_y, float radius, float arena_radius);
     void soft_body_impulse(SoftBody &body, float velocity_x, float velocity_y);
+    void soft_body_follow(SoftBody &body, uint32_t elapsed_ms, float target_x, float target_y);
+    void soft_body_rotation(const SoftBody &body, float *cosine, float *sine);
     void soft_body_update(SoftBody &body, uint32_t elapsed_ms, float acceleration_x, float acceleration_y);
     void soft_body_outline(const SoftBody &body, int16_t *px, int16_t *py, int count);
 }

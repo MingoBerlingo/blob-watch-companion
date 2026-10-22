@@ -1,5 +1,6 @@
 #include "apps/blob_native/blob/soft_body.h"
 #include "apps/blob_native/shared_state.h"
+#include "apps/blob_native/blob/face.h"
 #include <cmath>
 #include <chrono>
 #include <cstdlib>
@@ -64,12 +65,21 @@ int main() {
         shortest=std::fmin(shortest,r); longest=std::fmax(longest,r);
     }
     check(shortest > longest*0.75f && shortest < longest*0.85f, "Star has a larger inner radius while retaining visible valleys");
-    auto response = body, previous_response = body;
-    for (int i=0; i<12; ++i) {
-        soft_body_update(response, 8, BLOB_SOFT_BODY_ACCELERATION, 0);
-        soft_body_update(previous_response, 8, 650, 0);
+    auto response = body;
+    soft_body_follow(response,16,152,120);
+    check(response.center_x>120.5f, "Position controller responds immediately toward accelerometer target");
+    for (int i=0;i<200;++i) soft_body_follow(response,8,152,120);
+    check(std::fabs(response.center_x-152)<0.5f, "Held tilt settles at a position instead of falling indefinitely");
+    for (int i=0;i<200;++i) soft_body_follow(response,8,120,120);
+    check(std::fabs(response.center_x-120)<0.5f, "Returning flat recenters the soft body");
+    auto grouped=body, subdivided=body;
+    for (int i=0;i<100;++i) {
+        soft_body_follow(grouped,32,184,120);
+        for (int j=0;j<4;++j) soft_body_follow(subdivided,8,184,120);
     }
-    check(response.center_x-120 < (previous_response.center_x-120)*0.6f, "Steady gravity is weaker than before");
+    for (int i=0;i<SOFT_BODY_POINTS;++i)
+        check(grouped.points[i].x==subdivided.points[i].x && grouped.points[i].y==subdivided.points[i].y,
+              "Position control is independent of render frame partition");
     const float rest_area = area(body);
     auto initial = body;
     for (int i = 0; i < 2000; ++i) soft_body_update(body, 8, 0, 0);
@@ -87,6 +97,16 @@ int main() {
         p.x = 120 - dy; p.y = 120 + dx;
     }
     const auto rotated = body;
+    float rotation_cos, rotation_sin;
+    soft_body_rotation(body, &rotation_cos, &rotation_sin);
+    check(std::fabs(rotation_cos)<0.001f && std::fabs(rotation_sin-1)<0.001f, "Expose the body's actual quarter-turn rotation");
+    int16_t lx,ly,rx,ry;
+    compute_eye_positions(120,120,rotation_sin,-rotation_cos,0,0,&lx,&ly,&rx,&ry);
+    check(std::abs(lx-rx)<=1 && std::abs(ly-ry)>8 && lx>120, "Eyes turn with the body instead of staying upright");
+    int16_t mx0,my0,mxm,mym,mx1,my1;
+    compute_mouth_points(120,120,rotation_sin,-rotation_cos,0,0,&mx0,&my0,&mxm,&mym,&mx1,&my1);
+    check(std::abs(mx0-mx1)<=1 && std::abs(my0-my1)>10 && mxm<120, "Mouth turns with the body");
+
     for (int i = 0; i < 100; ++i) soft_body_update(body, 8, 0, 0);
     float rotation_error = 0;
     for (int i = 0; i < SOFT_BODY_POINTS; ++i)
@@ -124,7 +144,7 @@ int main() {
     body = initial;
     for (int i = 0; i < 30000; ++i) {
         const float phase = i * 0.008f;
-        soft_body_update(body, 8, std::sin(phase * 1.3f) * BLOB_SOFT_BODY_ACCELERATION, std::cos(phase * 0.7f) * BLOB_SOFT_BODY_ACCELERATION);
+        soft_body_update(body, 8, std::sin(phase * 1.3f) * 900, std::cos(phase * 0.7f) * 900);
         if (i % 20 == 0) {
             bounded(body);
             if (area(body) <= rest_area * 0.45f) std::cerr << "Stress step " << i << " area ratio " << area(body)/rest_area << " center " << body.center_x << "," << body.center_y << "\n";
@@ -138,6 +158,15 @@ int main() {
     soft_body_update(body, 16, NAN, INFINITY);
     bounded(body);
 
+    body = initial;
+    for (int i=0;i<20000;++i) {
+        const float phase=i*0.008f;
+        soft_body_follow(body,8,120+80*std::sin(phase*1.3f),120+80*std::cos(phase*0.7f));
+        if (i%20==0) {
+            bounded(body);
+            check(area(body)>rest_area*0.45f, "Position following preserves the soft body under rim impacts");
+        }
+    }
     body = initial;
     const auto start = std::chrono::steady_clock::now();
     for (int i = 0; i < 100000; ++i) soft_body_update(body, 8, 400, 200);

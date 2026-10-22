@@ -40,9 +40,18 @@ namespace blob_native
             return value < -1200 ? -1200 : (value > 1200 ? 1200 : value);
         }
 
-        void step(SoftBody &body, float ax, float ay)
+        void step(SoftBody &body, float ax, float ay, bool follow=false, float target_x=0, float target_y=0)
         {
             measure(body);
+            if (follow)
+            {
+                // Continuous-time equivalent of the original 16 ms controller:
+                // v = 0.75*v + 0.15*(target-position), with bounded drive.
+                ax=585.9375f*(target_x-body.center_x)-15.625f*body.velocity_x;
+                ay=585.9375f*(target_y-body.center_y)-15.625f*body.velocity_y;
+                const float force=sqrtf(ax*ax+ay*ay);
+                if (force>4000) { ax*=4000/force; ay*=4000/force; }
+            }
             float dot = 0, cross = 0, inertia = 0, angular_momentum = 0;
             for (int i = 0; i < SOFT_BODY_POINTS; ++i)
             {
@@ -90,6 +99,14 @@ namespace blob_native
                 auto &p = body.points[i];
                 p.vx = (p.vx + fx[i] * kDt) / (1 + kAirDrag * kDt);
                 p.vy = (p.vy + fy[i] * kDt) / (1 + kAirDrag * kDt);
+            }
+            if (follow)
+            {
+                measure(body);
+                soft_body_impulse(body,0,0); // Cap only rigid translation, retain deformation.
+            }
+            for (auto &p : body.points)
+            {
                 p.x += p.vx * kDt;
                 p.y += p.vy * kDt;
                 const float dx = p.x - body.arena_x, dy = p.y - body.arena_y;
@@ -127,6 +144,7 @@ namespace blob_native
         body.arena_x = center_x;
         body.arena_y = center_y;
         body.arena_radius = arena_radius;
+        body.rest_radius = radius;
         for (int i = 0; i < SOFT_BODY_POINTS; ++i)
         {
             // Eight tips and eight valleys. Start with a tip pointing upward.
@@ -154,6 +172,40 @@ namespace blob_native
         const float dx=vx-body.velocity_x, dy=vy-body.velocity_y;
         for (auto &point:body.points) { point.vx+=dx; point.vy+=dy; }
         body.velocity_x=vx; body.velocity_y=vy;
+    }
+
+    void soft_body_follow(SoftBody &body, uint32_t elapsed_ms, float target_x, float target_y)
+    {
+        if (!isfinite(target_x) || !isfinite(target_y)) return;
+        const float dx=target_x-body.arena_x, dy=target_y-body.arena_y;
+        const float distance=sqrtf(dx*dx+dy*dy);
+        const float limit=fmaxf(0,body.arena_radius-body.rest_radius);
+        if (distance>limit)
+        {
+            target_x=body.arena_x+dx*limit/distance;
+            target_y=body.arena_y+dy*limit/distance;
+        }
+        body.remainder_ms+=elapsed_ms>kMaxCatchupMs ? kMaxCatchupMs:elapsed_ms;
+        while (body.remainder_ms>=kStepMs)
+        {
+            step(body,0,0,true,target_x,target_y);
+            body.remainder_ms-=kStepMs;
+        }
+        measure(body);
+    }
+
+    void soft_body_rotation(const SoftBody &body, float *cosine, float *sine)
+    {
+        float dot=0,cross=0;
+        for (int i=0;i<SOFT_BODY_POINTS;++i)
+        {
+            const float x=body.points[i].x-body.center_x, y=body.points[i].y-body.center_y;
+            dot+=x*body.rest_x[i]+y*body.rest_y[i];
+            cross+=body.rest_x[i]*y-body.rest_y[i]*x;
+        }
+        const float length=sqrtf(dot*dot+cross*cross);
+        *cosine=length>0.0001f ? dot/length:1;
+        *sine=length>0.0001f ? cross/length:0;
     }
 
     void soft_body_update(SoftBody &body, uint32_t elapsed_ms, float acceleration_x, float acceleration_y)

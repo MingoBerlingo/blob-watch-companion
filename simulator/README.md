@@ -190,47 +190,56 @@ The USB connection was manually unplugged after the filled sample, not a crash.
 
 ## Local 2D soft-body prototype
 
-The local branch `codex/local-softbody-prototype` replaces the animated sine-wave
-contour with a eight-point star rest shape and persistent physics state. The
-initial circular version was tested on the device; the current local iteration
-uses sixteen particles (eight tips, eight valleys) with weaker gravity and
-stronger accelerometer motion forces. `BLOB_SOFT_BODY_ENABLED` selects it;
-`BLOB_SOFT_BODY_ACCELERATION` controls tilt strength. Radius, the 2 px outline,
-face colors and navigation remain unchanged.
+Branch `codex/local-softbody-prototype` contains the on-device experiment. The
+current body is an eight-spike star (16 particles, inner radius 78% of outer
+radius), drawn as a smooth 48-point, 2px outline. `BLOB_SOFT_BODY_ENABLED` selects
+it instead of the old procedural contour. No animated sine waves deform the body.
 
-The independently written C++ model uses the particle/shape-matching concepts
-explained in [Lisyarus' article](https://lisyarus.github.io/blog/posts/soft-body-physics.html)
-and the [PICO-8 prototype](https://www.lexaloffle.com/bbs/?tid=141367). No cartridge
-code or assets were copied. Each of 16 points owns a position and velocity;
-neighbour springs resist stretching. A best-fit rotated rest shape supplies
-restoring forces, and damping reduces deformation while allowing overall motion.
-Tilt acts as acceleration, rather than a target position. Points colliding with
-the circular bezel are projected inward, their outward velocity is reflected,
-and tangential friction removes some sliding energy. This is shape matching,
-not a pressure/constant-volume solver; volume is only approximately preserved.
+The independently written physics uses particle/shape-matching concepts from
+[Lisyarus](https://lisyarus.github.io/blog/posts/soft-body-physics.html) and the
+[PICO-8 prototype](https://www.lexaloffle.com/bbs/?tid=141367). No cartridge code
+or assets were copied. Neighbour springs and best-fit rotational shape matching
+restore the rest shape after impacts; damping makes it settle. Collisions project
+particles inside the round bezel and change their velocity. The model has no exact
+volume constraint or general self-collision solver.
 
-Physics advances in fixed 8 ms steps independently of display refresh, with at
-most eight steps per update. Long stalls discard excess elapsed time to bound
-work. A 48-point closed Catmull-Rom contour smooths the physics points; boundary
-clipping prevents interpolation from drawing outside the arena. The face follows
-the particle centroid upright. Existing blink/bob helpers still animate the face;
-they do not deform the physical contour. Returning to the Blob page resets its
-state, matching the existing page lifecycle.
+### Current center control and rotation
 
-Run the local preview:
+Movement again uses the original accelerometer-to-position mapping:
+
+- Target X = screen center X + accelerometer Y * 64 px.
+- Target Y = screen center Y - accelerometer X * 64 px.
+- Holding a tilt settles at the target; flat input recenters the body.
+- Linear acceleration also changes that target, as in the original firmware.
+
+The original spring-like controller is approximated at fixed 8 ms steps with
+stiffness 585.9375/s² and damping 15.625/s, plus the existing air drag. Target
+positions are projected into the available circular center region; control
+acceleration is capped at 4000 px/s² and center speed at 400 px/s. The response is
+therefore similar to the original behavior, not numerically identical. Internal
+deformation and contact forces are retained. At most eight steps are processed
+per update, discarding excess time after a long stall.
+
+The best-fit particle rotation now also rotates the face's forward/side axes:
+eyes, mouth, and blinking eyelids all turn with the body. Contacts can rotate the
+body freely. Device yaw does not directly rotate it. Returning to the Blob page
+resets its state, matching the existing lifecycle.
+
+The earlier gyro-gravity/shake estimator (`motion_response.*`) is retained as an
+inactive experiment with isolated tests; the Blob page no longer calls it. The
+active path uses `waveshare_native_read_tilt`, so there is no gravity estimator,
+separate gravity force, or gyro-triggered impulse driving the current body.
+
+### Preview and validation
 
 ```sh
 cmake --build simulator/build-release --parallel
 ./simulator/build-release/blob_simulator
 ```
 
-Use W/X/A/D to tilt, R to remove tilt, J/L for sideways shake pulses, and arrows
-to navigate. There is no touch
-dragging in this prototype, so swipes keep their existing meaning. Neutral tilt
-means zero acceleration: the Blob starts still and, after motion, settles where
-its remaining momentum and contact forces take it rather than recentering.
-
-Generate the deterministic six-second demo and optional GIF:
+W/X/A/D change accelerometer tilt; R returns to flat input. J/L inject short
+sideways accelerometer pulses. Arrows navigate; touch dragging remains reserved
+for the existing page navigation.
 
 ```sh
 ./simulator/build-release/blob_simulator --softbody-demo --output /tmp/blob-softbody
@@ -239,55 +248,15 @@ ffmpeg -y -framerate 25 -i /tmp/blob-softbody/frame-%03d.bmp \
   /tmp/blob-softbody/softbody.gif
 ```
 
-The model stores 480 bytes (previously 704 with 24 particles), with no heap
-allocation. On this Mac, 100,000 fixed steps take roughly 10–15 ms in Release; this is not RP2040 timing or animation FPS.
-Steady tilt gravity is 300 px/s². Gyro-derived orientation sets its direction;
-only accelerometer residuals generate the stronger movement impulses. The star valleys use
-78% of the outer radius and the top tip starts upright.
-Device FPS must be measured separately before calling this performance-ready.
+Persistent model state is 484 bytes, without heap allocation. Desktop timing cannot
+predict board FPS. Default firmware must compile, and hardware feel is checked on
+the user's board. Tests run locally; no GitHub CI or push is authorized by this
+experiment.
 
-Local regressions cover rest equilibrium, rotation/translation invariance, dent
-recovery, approximate area preservation, identical results across frame partitions,
-bounded catch-up, non-finite input filtering and four simulated minutes of changing
-forces. Samples verify finite/bounded points, positive area and no crossing edges.
-Visual references include rim compression, rebound and settling; the existing
-navigation/timer/brightness tests remain enabled. Firmware validation and simulator tests run locally, without CI. Device uploads
-are performed only when requested for the current prototype.
-
-Limits: this is a single-body experiment with no general self-collision solver,
-body-to-body contact or exact volume constraint. Stress tests cover the current
-parameters, not arbitrary stiffness/forces. Increasing stiffness requires retesting
-the fixed integration step, and a highly compressed contour could require more
-robust topology handling before adding dragging or obstacles.
-
-### Immediate movement response
-
-The board adapter now exposes full acceleration in g and gyro in degrees/second.
-A lightweight complementary estimator predicts the gravity vector from the gyro
-and corrects it slowly with plausible accelerometer samples. This separates
-steady orientation from transient motion approximately; it is not calibrated
-linear-acceleration navigation or an exact gravity separator during sustained
-translation. Hardware feel still needs user validation.
-
-Gravity is 300 px/s². The gyro tracks the gravity direction but never adds a
-velocity impulse directly. Residual sideways acceleration supplies the opposite
-inertial impulse (9,000 px/s² per g), with a 0.04 g noise deadband. Acceleration
-initializes the gravity reference, then corrects gyro drift slowly (2.5 s time
-constant) only while rotation is quiet (<0.2 rad/s) and magnitude is 0.92–1.08 g.
-First samples seed the estimate without a kick, and the body's center speed is
-capped at 400 px/s. Internal deformation velocities remain intact. Estimator
-state resets on page entry. Motion uses the same 64 ms elapsed cap as the physics
-to limit effects from debugger stalls.
-
-Tests distinguish stationary/held tilt from movement, check quick turns and pure
-translation, reject small sensor noise/non-finite readings, compare frame rates,
-and stress repeated bounded impulses. The simulator synthesizes gyro rates from
-its tilt changes; its J/L pulses add transient accelerometer input. These are
-behavior tests, not a reproduction of the hardware sensor's filtering/noise.
-
-Gravity polarity correction: the estimator follows the accelerometer's support
-vector, so exported downhill tilt is its negative. Only that gravity output is
-inverted; the unmodified reference remains in accelerometer subtraction. A
-regression checks a known 30-degree roll yields the opposite physical gravity
-component without changing shake impulses. The eight-spike star's inner radius
-is now 78% of its outer radius.
+Regression tests cover equilibrium, translation/rotation invariance, dent
+recovery, bounded physics under changing forces, controller response/settling/
+recentering, frame partition independence, repeated target changes at the rim,
+and 90-degree face geometry. The existing shared-page interactions, deterministic
+screenshots and timer/brightness/navigation tests remain enabled. The model is
+only validated for the current parameters; extreme stiffness, arbitrary obstacles
+or dragging would require more robust collision/topology handling.

@@ -111,7 +111,11 @@ void set_tilt(float x, float y)
     tilt_x = std::clamp(x, -1.0f, 1.0f);
     tilt_y = std::clamp(y, -1.0f, 1.0f);
 }
-void read_tilt(float *x, float *y) { *x = tilt_x; *y = tilt_y; }
+void read_tilt(float *x, float *y) {
+    const bool shaking=clock_ms<shake_until;
+    *x=std::clamp(tilt_x+(shaking?shake_x:0),-1.0f,1.0f);
+    *y=std::clamp(tilt_y+(shaking?shake_y:0),-1.0f,1.0f);
+}
 void shake(float x_g, float y_g) { shake_x=x_g; shake_y=y_g; shake_until=clock_ms+80; }
 void read_motion(WaveshareNativeMotionSample *sample)
 {

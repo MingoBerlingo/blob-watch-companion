@@ -9,7 +9,6 @@
 #include "apps/blob_native/blob/face.h"
 #include "apps/blob_native/blob/shape.h"
 #include "apps/blob_native/blob/soft_body.h"
-#include "apps/blob_native/blob/motion_response.h"
 #include "apps/blob_native/lv_port/lv_port.h"
 #include "apps/blob_native/shared_state.h"
 #include "platform/waveshare_native_board.h"
@@ -41,7 +40,7 @@ namespace blob_native
         int16_t g_py[POINTS];
 
         SoftBody g_soft_body{};
-        MotionResponse g_motion_response{};
+        float g_face_x=FACE_DIR_X, g_face_y=FACE_DIR_Y;
         uint32_t g_last_blob_ms = 0;
 
         lv_obj_t *g_screen = nullptr;
@@ -157,14 +156,15 @@ namespace blob_native
 
             // Eyes.
             int16_t lx, ly, rx, ry;
-            compute_eye_positions(cx, cy, FACE_DIR_X, FACE_DIR_Y, speed, phase, &lx, &ly, &rx, &ry);
+            compute_eye_positions(cx, cy, g_face_x, g_face_y, speed, phase, &lx, &ly, &rx, &ry);
 
             const lv_color_t eye_c = lv_theme_get_color_secondary(g_screen);
             if (compute_blink_amount(speed, phase) > 0.4f)
             {
                 const int16_t half_lid = EYE_RADIUS + 1;
-                draw_segment(ctx, &line_dsc, (int16_t)(lx - half_lid), ly, (int16_t)(lx + half_lid), ly, eye_c);
-                draw_segment(ctx, &line_dsc, (int16_t)(rx - half_lid), ry, (int16_t)(rx + half_lid), ry, eye_c);
+                const int16_t side_x=(int16_t)(-g_face_y*half_lid), side_y=(int16_t)(g_face_x*half_lid);
+                draw_segment(ctx, &line_dsc, lx-side_x, ly-side_y, lx+side_x, ly+side_y, eye_c);
+                draw_segment(ctx, &line_dsc, rx-side_x, ry-side_y, rx+side_x, ry+side_y, eye_c);
             }
             else
             {
@@ -184,7 +184,7 @@ namespace blob_native
 
             // Mouth (neutral smile).
             int16_t mx0, my0, mxm, mym, mx1, my1;
-            compute_mouth_points(cx, cy, FACE_DIR_X, FACE_DIR_Y, speed, phase, &mx0, &my0, &mxm, &mym, &mx1, &my1);
+            compute_mouth_points(cx, cy, g_face_x, g_face_y, speed, phase, &mx0, &my0, &mxm, &mym, &mx1, &my1);
             const lv_color_t mouth_c = lv_theme_get_color_secondary(g_screen);
             draw_segment(ctx, &line_dsc, mx0, my0, mxm, mym, mouth_c);
             draw_segment(ctx, &line_dsc, mxm, mym, mx1, my1, mouth_c);
@@ -198,18 +198,16 @@ namespace blob_native
                 const uint32_t elapsed = now - g_last_blob_ms;
                 g_last_blob_ms = now;
                 float tilt_x = 0, tilt_y = 0;
-                WaveshareNativeMotionSample sample{};
-                if (BLOB_USE_IMU && waveshare_native_read_motion(&sample))
-                {
-                    const MotionInput input{sample.acceleration_x_g, sample.acceleration_y_g, sample.acceleration_z_g,
-                                            sample.gyro_x_dps, sample.gyro_y_dps, sample.gyro_z_dps};
-                    const auto motion = motion_response_update(g_motion_response, input, elapsed);
-                    tilt_x = motion.tilt_x; tilt_y = motion.tilt_y;
-                    soft_body_impulse(g_soft_body, motion.kick_x, motion.kick_y);
-                }
-                soft_body_update(g_soft_body, elapsed,
-                                 tilt_y * BLOB_SOFT_BODY_ACCELERATION,
-                                 -tilt_x * BLOB_SOFT_BODY_ACCELERATION);
+                if (BLOB_USE_IMU) waveshare_native_read_tilt(&tilt_x, &tilt_y);
+                // Original accelerometer-to-position mapping, now driving the
+                // soft body's center through its fixed-step damped controller.
+                const float target_x=CENTER_X+tilt_y*(CENTER_X-BLOB_RADIUS-6.0f);
+                const float target_y=CENTER_Y-tilt_x*(CENTER_Y-BLOB_RADIUS-6.0f);
+                soft_body_follow(g_soft_body,elapsed,target_x,target_y);
+                float cosine,sine;
+                soft_body_rotation(g_soft_body,&cosine,&sine);
+                g_face_x=cosine*FACE_DIR_X-sine*FACE_DIR_Y;
+                g_face_y=sine*FACE_DIR_X+cosine*FACE_DIR_Y;
                 g_state.cx = g_soft_body.center_x;
                 g_state.cy = g_soft_body.center_y;
                 // Existing face helpers expect roughly pixels per 16 ms frame.
@@ -268,7 +266,7 @@ namespace blob_native
             g_state.cy = CENTER_Y;
             g_state.speed = 0.0f;
             g_last_blob_ms = millis();
-            g_motion_response = {};
+            g_face_x=FACE_DIR_X; g_face_y=FACE_DIR_Y;
             if (BLOB_SOFT_BODY_ENABLED)
             {
                 soft_body_reset(g_soft_body, CENTER_X, CENTER_Y, BLOB_RADIUS,
