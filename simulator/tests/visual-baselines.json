@@ -1,14 +1,14 @@
 {
   "blob.bmp": "a93cbc4907cda927984bfcdbecc7ac16722637f014c5ac1162d2b36fa90dc36f",
-  "brightness-high.bmp": "b013d1b9256698040284381fda48c8598d94aa1ef0ecc933c4732ea45241c950",
-  "brightness-low.bmp": "f6f2b5e96211663aedffc098e2deb2498eacf3f14526f5c8719b8253614d1b09",
-  "brightness.bmp": "181abd51c8ba97f8bff87c7e37f75cc86990f42f501190c8a48a2dde77c0046b",
+  "brightness-high.bmp": "bda92808a32cf801fe5b1811b022f40f1d6bf580c4b9da7ee1eae20ca1d99793",
+  "brightness-low.bmp": "85941ed3c99debed6613555d57086ac6ed04ee3654a545b9868f8f4c8a07a0c5",
+  "brightness.bmp": "df2786a94cee8fc781f559cc79e32a222aec5a8fb4da03c3572c581a3788ba9a",
   "color-check.bmp": "4de61c8dc4a1409713483297f6bedc30a209cc61d1067f0870716559e8063b14",
-  "timer-expired.bmp": "5baba8e48530e424d09e0597d32c655f1f01d3524de8a20200768427cbe6df08",
-  "timer-paused.bmp": "04be0697b862a643618a9afb986e360dcf326262ff226ee142af30e0f0f16550",
-  "timer-reference-ended.bmp": "d7f7ce5c4c4b15b37a0d32f671c4238a8600b907daf2e36dd5f693d1cc542152",
-  "timer-reference-paused.bmp": "5c78a679c0809872da9f08a37fa3b011ad87dd7329f21d098e16bc45bab09904",
-  "timer-reference-running.bmp": "64843b700bd13ba880e6e6cab0d3a63efcd93366a461b55f8ad982c1bc0b3779",
-  "timer-running.bmp": "eadd473c722fd93d2b52f50ff43a1821c2013f57e85a1b11def03d5ff16e8f8b",
+  "timer-expired.bmp": "5aeb9524be2ad1c69b29aa8e05dfbbae33a270f1f38554402d87599884f74af6",
+  "timer-paused.bmp": "2f166d372360a501e02f5f3c37c8c572c0e0a27e7aaf53527225a1b56e8cf6e9",
+  "timer-reference-ended.bmp": "81a3705ce5a448ad31ddc3fbd3acb9aeb904889b73efefabbe8dd4d05e7ad994",
+  "timer-reference-paused.bmp": "64e2a974f764a41150cb0eee04b1d5fced35d163139cab4affad2afa9b28e5ed",
+  "timer-reference-running.bmp": "c93f1a07dd15ec5a6bfc0c5f885f4587459110f11dba283b1ac043002651b728",
+  "timer-running.bmp": "4fa8bfd0de2d5eabde1f6818bfc65dc70ba5dce136b875862fb2b298d7572dab",
   "timer-setup.bmp": "a90fa24f84ce82587858080a15e59534412f3a13e3eaa6ddfdb4e5bbdc50d363"
 }

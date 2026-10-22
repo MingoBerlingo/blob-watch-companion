@@ -119,7 +119,7 @@ bool run_scenarios(const std::filesystem::path &output)
     auto *slider = widget(&lv_slider_class);
     expect(lv_obj_get_width(slider) == 60 && lv_obj_get_height(slider) == 150, "Slider is vertical and 60 pixels wide");
     expect(lv_slider_get_value(slider) == 70, "Brightness starts at 70 percent");
-    expect(lv_obj_get_child_cnt(brightness_screen) == 2 && find(brightness_screen, &lv_label_class, "brigthness"), "Brightness contains only its title and slider");
+    expect(lv_obj_get_child_cnt(brightness_screen) == 2 && !find(brightness_screen, &lv_label_class, nullptr), "Brightness contains a sun and slider without text");
     capture("brightness");
     drag_slider(slider, false);
     expect(lv_slider_get_value(slider) == 5 && brightness() == 5, "Pointer drag reaches minimum and updates backlight request");
@@ -136,14 +136,27 @@ bool run_scenarios(const std::filesystem::path &output)
     set_duration(0, 10);
     button("Start");
     expect(timer_running() && timer_minutes() == 10, "Reference flow starts a ten minute timer");
+    const auto fixed_digits = [](lv_obj_t *label) {
+        const auto *font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
+        const auto width = lv_font_get_glyph_width(font, '0', 0);
+        for (uint32_t digit = '0'; digit <= '9'; ++digit) {
+            for (uint32_t next = '0'; next <= '9'; ++next)
+                if (lv_font_get_glyph_width(font, digit, next) != width) return false;
+            if (lv_font_get_glyph_width(font, digit, ':') != width) return false;
+        }
+        return true;
+    };
+    expect(fixed_digits(widget(&lv_label_class, "10:00")), "Running countdown uses fixed-width digits without kerning");
     capture("timer-reference-running");
     click(120, 164);
     expect(!timer_running() && timer_run_controls_visible(), "Reference pause shows the three icon actions");
+    expect(fixed_digits(widget(&lv_label_class, "10:00")), "Paused countdown uses fixed-width digits");
     capture("timer-reference-paused");
     click(120, 164);
     advance(600100);
     step(100);
     expect(timer_view() == TimerView::TimerEnded, "Reference countdown opens its ended screen");
+    expect(fixed_digits(widget(&lv_label_class, "10:00")), "Ended duration uses fixed-width digits");
     capture("timer-reference-ended");
     click(82, 138);
     set_duration(5);
@@ -274,6 +287,21 @@ bool run_scenarios(const std::filesystem::path &output)
     step(10);
     release();
     expect(timer_running() && !timer_run_controls_visible(), "Ten millisecond tap resumes the paused timer");
+    click(120, 164);
+    const auto previous_brightness = brightness();
+    set_touch({true, 120, 190, Gesture::Left});
+    step(100);
+    set_touch({true, 120, 80, Gesture::None});
+    step(100);
+    expect(brightness() == previous_brightness, "Held swipe cannot drag destination brightness slider");
+    release();
+    expect(brightness() == previous_brightness, "Releasing a swipe leaves destination brightness unchanged");
+    set_touch({true, 120, 164, Gesture::Right});
+    step(100);
+    release();
+    expect(!timer_running(), "Held swipe and release cannot activate destination Play button");
+    click(120, 164);
+    expect(timer_running(), "Fresh tap works immediately after swipe release");
     std::ofstream report(output / "report.json");
     report << "{\"passed\":" << passed << ",\"failed\":" << failures.size() << ",\"failures\":[";
     for (size_t i = 0; i < failures.size(); ++i) report << (i ? "," : "") << '"' << failures[i] << '"';

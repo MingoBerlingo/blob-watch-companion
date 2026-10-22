@@ -23,11 +23,12 @@ namespace blob_native
         void draw_icon(lv_event_t *event)
         {
             lv_draw_ctx_t *context = lv_event_get_draw_ctx(event);
-            if (!context) return;
+            if (!context)
+                return;
             lv_area_t area;
             lv_obj_get_coords(lv_event_get_target(event), &area);
-            const lv_coord_t x = (area.x1 + area.x2) / 2;
-            const lv_coord_t y = (area.y1 + area.y2) / 2;
+            const lv_coord_t x = area.x1 + lv_area_get_width(&area) / 2;
+            const lv_coord_t y = area.y1 + lv_area_get_height(&area) / 2;
             const auto icon = static_cast<TimerIcon>(reinterpret_cast<uintptr_t>(lv_event_get_user_data(event)));
             const lv_color_t black = lv_rgb565(BG_COLOR);
             if (icon == TimerIcon::Pause)
@@ -64,19 +65,19 @@ namespace blob_native
                 shape.bg_color = black;
                 shape.bg_opa = LV_OPA_COVER;
                 lv_point_t outline[5] = {
-                    {static_cast<lv_coord_t>(x - 11), y},
-                    {static_cast<lv_coord_t>(x + 8), static_cast<lv_coord_t>(y - 19)},
-                    {static_cast<lv_coord_t>(x + 14), static_cast<lv_coord_t>(y - 13)},
-                    {static_cast<lv_coord_t>(x + 14), static_cast<lv_coord_t>(y + 13)},
-                    {static_cast<lv_coord_t>(x + 8), static_cast<lv_coord_t>(y + 19)}};
+                    {static_cast<lv_coord_t>(x - 14), y},
+                    {static_cast<lv_coord_t>(x + 5), static_cast<lv_coord_t>(y - 19)},
+                    {static_cast<lv_coord_t>(x + 11), static_cast<lv_coord_t>(y - 13)},
+                    {static_cast<lv_coord_t>(x + 11), static_cast<lv_coord_t>(y + 13)},
+                    {static_cast<lv_coord_t>(x + 5), static_cast<lv_coord_t>(y + 19)}};
                 lv_draw_polygon(context, &shape, outline, 5);
                 // LVGL supports convex polygons. Subtract the notch using the
                 // button's current color, including its pressed-state shade.
                 shape.bg_color = lv_obj_get_style_bg_color(lv_event_get_target(event), LV_PART_MAIN);
                 lv_point_t notch[3] = {
-                    {static_cast<lv_coord_t>(x + 1), y},
-                    {static_cast<lv_coord_t>(x + 17), static_cast<lv_coord_t>(y - 16)},
-                    {static_cast<lv_coord_t>(x + 17), static_cast<lv_coord_t>(y + 16)}};
+                    {static_cast<lv_coord_t>(x - 2), y},
+                    {static_cast<lv_coord_t>(x + 14), static_cast<lv_coord_t>(y - 16)},
+                    {static_cast<lv_coord_t>(x + 14), static_cast<lv_coord_t>(y + 16)}};
                 lv_draw_polygon(context, &shape, notch, 3);
             }
             else if (icon == TimerIcon::Repeat)
@@ -84,20 +85,20 @@ namespace blob_native
                 lv_draw_arc_dsc_t arc;
                 lv_draw_arc_dsc_init(&arc);
                 arc.color = black;
-                arc.width = 7;
-                // Offset the circle to optically center the combined arc/head.
-                lv_point_t center = {static_cast<lv_coord_t>(x - 2), static_cast<lv_coord_t>(y + 2)};
-                lv_draw_arc(context, &arc, &center, 18, 45, 315);
+                arc.width = 9;
+                // Keep the circle centered on the button.
+                lv_point_t center = {static_cast<lv_coord_t>(x), static_cast<lv_coord_t>(y)};
+                lv_draw_arc(context, &arc, &center, 19, 30, 300);
                 lv_draw_rect_dsc_t arrow;
                 lv_draw_rect_dsc_init(&arrow);
                 arrow.bg_color = black;
                 arrow.bg_opa = LV_OPA_COVER;
-                // Head points along the clockwise tangent at 315 degrees and
-                // overlaps the arc end so there is no gap or abrupt elbow.
+                // Clockwise tangent at the upper-right arc end. The broad base
+                // overlaps the stroke while the tip leaves a clear right-side gap.
                 lv_point_t points[3] = {
-                    {static_cast<lv_coord_t>(center.x + 19), static_cast<lv_coord_t>(center.y - 3)},
-                    {static_cast<lv_coord_t>(center.x - 1), static_cast<lv_coord_t>(center.y - 9)},
-                    {static_cast<lv_coord_t>(center.x + 13), static_cast<lv_coord_t>(center.y - 23)}};
+                    {static_cast<lv_coord_t>(x + 17), static_cast<lv_coord_t>(y - 4)},
+                    {static_cast<lv_coord_t>(x + 0), static_cast<lv_coord_t>(y - 4)},
+                    {static_cast<lv_coord_t>(x + 14), static_cast<lv_coord_t>(y - 22)}};
                 lv_draw_polygon(context, &arrow, points, 3);
             }
             else

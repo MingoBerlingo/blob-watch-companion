@@ -8,7 +8,7 @@ with tempfile.TemporaryDirectory() as directory:
     temp = Path(directory)
     headers = {
         'Arduino.h': '#include <stdint.h>\nuint32_t millis(){return 0;}\nvoid delay(int){}\n',
-        'apps/blob_native/lv_port/lv_port.h': 'void lv_port_handler(){}',
+        'apps/blob_native/lv_port/lv_port.h': 'void lv_port_handler(){} void lv_port_block_touch_until_release(){}',
         'apps/blob_native/pages/blob/blob_page.h': 'void blob_page_init(){} void blob_page_show(){} void blob_page_hide(){}',
         'apps/blob_native/pages/brightness/brightness_page.h': 'void brightness_page_init(){} void brightness_page_show(){} void brightness_page_hide(){}',
         'apps/blob_native/pages/timer/timer_page.h': 'void timer_page_init(){} void timer_page_show(){} void timer_page_hide(){} void timer_page_tick(uint32_t){}',

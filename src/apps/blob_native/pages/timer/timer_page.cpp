@@ -6,8 +6,8 @@
 #include "lvgl.h"
 
 #include "apps/blob_native/lv_port/lv_port.h"
-#include "apps/blob_native/shared_state.h"
 #include "apps/blob_native/pages/page_manager.h"
+#include "apps/blob_native/shared_state.h"
 #include "apps/blob_native/timer/runtime_draw.h"
 #include "apps/blob_native/timer/view.h"
 
@@ -16,6 +16,58 @@ namespace blob_native
 
     namespace
     {
+        // Reuse Montserrat bitmaps, but give every digit the same advance.
+        // Keep this font local to duration labels so other UI text is unchanged.
+        struct TabularFont
+        {
+            lv_font_t font;
+            const lv_font_t *base;
+            uint16_t digit_width = 0;
+
+            explicit TabularFont(const lv_font_t *source) : font(*source), base(source)
+            {
+                for (uint32_t digit = '0'; digit <= '9'; ++digit)
+                {
+                    const auto width = lv_font_get_glyph_width(base, digit, 0);
+                    if (width > digit_width)
+                        digit_width = width;
+                }
+                font.dsc = this;
+                font.get_glyph_dsc = describe;
+                font.get_glyph_bitmap = bitmap;
+            }
+
+            static bool describe(const lv_font_t *font, lv_font_glyph_dsc_t *glyph,
+                                 uint32_t letter, uint32_t next)
+            {
+                const auto *self = static_cast<const TabularFont *>(font->dsc);
+                // No kerning: changing a neighbouring digit must not shift a cell.
+                if (!self->base->get_glyph_dsc(self->base, glyph, letter, 0))
+                    return false;
+                if (letter >= '0' && letter <= '9')
+                {
+                    glyph->ofs_x += (self->digit_width - glyph->adv_w) / 2;
+                    glyph->adv_w = self->digit_width;
+                }
+                (void)next;
+                return true;
+            }
+
+            static const uint8_t *bitmap(const lv_font_t *font, uint32_t letter)
+            {
+                const auto *self = static_cast<const TabularFont *>(font->dsc);
+                return self->base->get_glyph_bitmap(self->base, letter);
+            }
+        };
+
+        const lv_font_t *duration_font(bool ended, bool controls)
+        {
+            static const TabularFont large(&lv_font_montserrat_32);
+            static const TabularFont small(&lv_font_montserrat_14);
+            static const TabularFont completed(&lv_font_montserrat_16);
+            return ended ? &completed.font : (controls ? &small.font : &large.font);
+        }
+
         constexpr int kRollerOptions = 60; // "00" .. "59"
 
         lv_obj_t *g_screen = nullptr;
@@ -50,7 +102,8 @@ namespace blob_native
         void set_visible(lv_obj_t *obj, bool visible)
         {
             const bool is_visible = !lv_obj_has_flag(obj, LV_OBJ_FLAG_HIDDEN);
-            if (is_visible == visible) return;
+            if (is_visible == visible)
+                return;
             if (visible)
                 lv_obj_clear_flag(obj, LV_OBJ_FLAG_HIDDEN);
             else
@@ -141,7 +194,7 @@ namespace blob_native
 
             g_time_label = lv_label_create(g_screen);
             lv_obj_clear_flag(g_time_label, LV_OBJ_FLAG_CLICKABLE);
-            lv_obj_set_style_text_font(g_time_label, &lv_font_montserrat_32, 0);
+            lv_obj_set_style_text_font(g_time_label, duration_font(false, false), 0);
             lv_obj_set_style_text_color(g_time_label, lv_color_white(), 0);
 
             g_pause_btn = timer_create_icon_button(g_screen, TimerIcon::Pause, TIMER_PAUSE_COLOR, 120, 164);
@@ -205,10 +258,11 @@ namespace blob_native
                     g_last_display_seconds = disp;
                 }
 
-                if (show_run) timer_refresh_progress_ring(g_ring, timer_remaining_ms(), timer_total_ms());
+                if (show_run)
+                    timer_refresh_progress_ring(g_ring, timer_remaining_ms(), timer_total_ms());
                 if (force || controls != g_last_controls || view != g_last_view)
                 {
-                    lv_obj_set_style_text_font(g_time_label, show_ended ? &lv_font_montserrat_16 : (controls ? &lv_font_montserrat_14 : &lv_font_montserrat_32), 0);
+                    lv_obj_set_style_text_font(g_time_label, duration_font(show_ended, controls), 0);
                     lv_obj_set_style_text_color(g_time_label, show_ended ? col(TIMER_ENDED_TIME_COLOR) : (controls ? col(TIMER_BACK_COLOR) : lv_color_white()), 0);
                     g_last_controls = controls;
                     label_changed = true;

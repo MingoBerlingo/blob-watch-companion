@@ -42,6 +42,7 @@ namespace blob_native
                 return;
             }
             g_swipe_consumed = true;
+            lv_port_block_touch_until_release();
 
             if (g_page == Page::Blob && touch.gesture == WaveshareNativeTouchGesture::Left)
             {
