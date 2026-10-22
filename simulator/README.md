@@ -191,15 +191,16 @@ The USB connection was manually unplugged after the filled sample, not a crash.
 ## Local 2D soft-body prototype
 
 The local branch `codex/local-softbody-prototype` replaces the animated sine-wave
-contour with a circular rest shape and persistent physics state. No firmware has
-been uploaded for this experiment. `BLOB_SOFT_BODY_ENABLED` selects it;
+contour with a five-point star rest shape and persistent physics state. The
+initial circular version was tested on the device; the current local iteration
+uses ten particles (five tips, five valleys) and stronger tilt acceleration. `BLOB_SOFT_BODY_ENABLED` selects it;
 `BLOB_SOFT_BODY_ACCELERATION` controls tilt strength. Radius, the 2 px outline,
 face colors and navigation remain unchanged.
 
 The independently written C++ model uses the particle/shape-matching concepts
 explained in [Lisyarus' article](https://lisyarus.github.io/blog/posts/soft-body-physics.html)
 and the [PICO-8 prototype](https://www.lexaloffle.com/bbs/?tid=141367). No cartridge
-code or assets were copied. Each of 24 points owns a position and velocity;
+code or assets were copied. Each of 10 points owns a position and velocity;
 neighbour springs resist stretching. A best-fit rotated rest shape supplies
 restoring forces, and damping reduces deformation while allowing overall motion.
 Tilt acts as acceleration, rather than a target position. Points colliding with
@@ -236,9 +237,10 @@ ffmpeg -y -framerate 25 -i /tmp/blob-softbody/frame-%03d.bmp \
   /tmp/blob-softbody/softbody.gif
 ```
 
-The model stores 704 bytes, with no heap allocation. On this Mac, 100,000 fixed
-steps take about 20–25 ms in Release; this is not RP2040 timing or animation FPS.
-The existing display benchmark measures about 13,225 pixels per neutral frame.
+The model stores 312 bytes (previously 704 with 24 particles), with no heap
+allocation. On this Mac, 100,000 fixed steps take roughly 10–15 ms in Release; this is not RP2040 timing or animation FPS.
+Tilt strength is 1,100 px/s² at full input, up from 650. The star valleys use
+62% of the outer radius and the top tip starts upright.
 Device FPS must be measured separately before calling this performance-ready.
 
 Local regressions cover rest equilibrium, rotation/translation invariance, dent
@@ -246,8 +248,8 @@ recovery, approximate area preservation, identical results across frame partitio
 bounded catch-up, non-finite input filtering and four simulated minutes of changing
 forces. Samples verify finite/bounded points, positive area and no crossing edges.
 Visual references include rim compression, rebound and settling; the existing
-navigation/timer/brightness tests remain enabled. Default and optional performance
-firmware builds must compile, but testing remains local with no CI or device upload.
+navigation/timer/brightness tests remain enabled. Firmware validation and simulator tests run locally, without CI. Device uploads
+are performed only when requested for the current prototype.
 
 Limits: this is a single-body experiment with no general self-collision solver,
 body-to-body contact or exact volume constraint. Stress tests cover the current

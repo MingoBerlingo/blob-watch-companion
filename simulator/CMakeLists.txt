@@ -58,5 +58,5 @@ target_include_directories(blob_shape_benchmark PRIVATE "${APP_ROOT}" "${CMAKE_C
 add_test(NAME blob_shape_regression COMMAND blob_shape_benchmark)
 
 add_executable(soft_body_test tests/soft_body_test.cpp "${APP}/blob/soft_body.cpp")
-target_include_directories(soft_body_test PRIVATE "${APP_ROOT}")
+target_include_directories(soft_body_test PRIVATE "${APP_ROOT}" "${CMAKE_CURRENT_SOURCE_DIR}/compat")
 add_test(NAME soft_body_regression COMMAND soft_body_test)

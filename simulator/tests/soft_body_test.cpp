@@ -1,4 +1,5 @@
 #include "apps/blob_native/blob/soft_body.h"
+#include "apps/blob_native/shared_state.h"
 #include <cmath>
 #include <chrono>
 #include <cstdlib>
@@ -48,6 +49,19 @@ void bounded(const SoftBody &body) {
 int main() {
     SoftBody body{};
     soft_body_reset(body, 120, 120, 50, 116);
+    check(SOFT_BODY_POINTS <= 12, "Reduced physics point count");
+    float shortest = 1000, longest = 0;
+    for (int i=0; i<SOFT_BODY_POINTS; ++i) {
+        const float r=std::hypot(body.rest_x[i], body.rest_y[i]);
+        shortest=std::fmin(shortest,r); longest=std::fmax(longest,r);
+    }
+    check(longest > shortest * 1.4f, "Rest shape has distinct star tips and valleys");
+    auto response = body, previous_response = body;
+    for (int i=0; i<12; ++i) {
+        soft_body_update(response, 8, BLOB_SOFT_BODY_ACCELERATION, 0);
+        soft_body_update(previous_response, 8, 650, 0);
+    }
+    check(response.center_x-120 > (previous_response.center_x-120)*1.4f, "Small tilts produce a stronger initial gravity response");
     const float rest_area = area(body);
     auto initial = body;
     for (int i = 0; i < 2000; ++i) soft_body_update(body, 8, 0, 0);
@@ -72,7 +86,8 @@ int main() {
     check(rotation_error < 0.1f, "Rotation invariance");
 
     body = initial;
-    body.points[0].x -= 20;
+    body.points[0].x = 120 + (body.points[0].x-120)*0.6f;
+    body.points[0].y = 120 + (body.points[0].y-120)*0.6f;
     const float displaced = deformation(body);
     for (int i = 0; i < 1000; ++i) soft_body_update(body, 8, 0, 0);
     check(deformation(body) < displaced * 0.02f, "Local dent relaxes instead of oscillating forever");
@@ -101,7 +116,7 @@ int main() {
     body = initial;
     for (int i = 0; i < 30000; ++i) {
         const float phase = i * 0.008f;
-        soft_body_update(body, 8, std::sin(phase * 1.3f) * 900, std::cos(phase * 0.7f) * 900);
+        soft_body_update(body, 8, std::sin(phase * 1.3f) * BLOB_SOFT_BODY_ACCELERATION, std::cos(phase * 0.7f) * BLOB_SOFT_BODY_ACCELERATION);
         if (i % 20 == 0) {
             bounded(body);
             if (area(body) <= rest_area * 0.45f) std::cerr << "Stress step " << i << " area ratio " << area(body)/rest_area << " center " << body.center_x << "," << body.center_y << "\n";

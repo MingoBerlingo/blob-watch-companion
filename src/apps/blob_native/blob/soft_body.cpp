@@ -114,7 +114,7 @@ namespace blob_native
 
         float interpolate(float a, float b, float c, float d, float t)
         {
-            // Closed Catmull-Rom contour: two drawing samples per physics point.
+            // Closed Catmull-Rom contour: drawing resolution is independent of physics.
             return 0.5f * (2 * b + (-a + c) * t +
                            (2 * a - 5 * b + 4 * c - d) * t * t +
                            (-a + 3 * b - 3 * c + d) * t * t * t);
@@ -129,9 +129,11 @@ namespace blob_native
         body.arena_radius = arena_radius;
         for (int i = 0; i < SOFT_BODY_POINTS; ++i)
         {
-            const float angle = 2 * kPi * i / SOFT_BODY_POINTS;
-            body.rest_x[i] = radius * cosf(angle);
-            body.rest_y[i] = radius * sinf(angle);
+            // Five tips and five valleys. Start with a tip pointing upward.
+            const float angle = -kPi * 0.5f + 2 * kPi * i / SOFT_BODY_POINTS;
+            const float point_radius = (i % 2 == 0) ? radius : radius * 0.62f;
+            body.rest_x[i] = point_radius * cosf(angle);
+            body.rest_y[i] = point_radius * sinf(angle);
             body.points[i] = {center_x + body.rest_x[i], center_y + body.rest_y[i], 0, 0};
         }
         for (int i = 0; i < SOFT_BODY_POINTS; ++i)
