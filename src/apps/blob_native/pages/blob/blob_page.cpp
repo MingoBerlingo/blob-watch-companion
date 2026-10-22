@@ -8,6 +8,7 @@
 
 #include "apps/blob_native/blob/face.h"
 #include "apps/blob_native/blob/shape.h"
+#include "apps/blob_native/blob/soft_body.h"
 #include "apps/blob_native/lv_port/lv_port.h"
 #include "apps/blob_native/shared_state.h"
 #include "platform/waveshare_native_board.h"
@@ -37,6 +38,9 @@ namespace blob_native
 
         int16_t g_px[POINTS];
         int16_t g_py[POINTS];
+
+        SoftBody g_soft_body{};
+        uint32_t g_last_blob_ms = 0;
 
         lv_obj_t *g_screen = nullptr;
         lv_obj_t *g_blob_obj = nullptr;
@@ -186,6 +190,26 @@ namespace blob_native
 
         void advance_blob()
         {
+            if (BLOB_SOFT_BODY_ENABLED)
+            {
+                const uint32_t now = millis();
+                const uint32_t elapsed = now - g_last_blob_ms;
+                g_last_blob_ms = now;
+                float tilt_x = 0, tilt_y = 0;
+                if (BLOB_USE_IMU) waveshare_native_read_tilt(&tilt_x, &tilt_y);
+                soft_body_update(g_soft_body, elapsed,
+                                 tilt_y * BLOB_SOFT_BODY_ACCELERATION,
+                                 -tilt_x * BLOB_SOFT_BODY_ACCELERATION);
+                g_state.cx = g_soft_body.center_x;
+                g_state.cy = g_soft_body.center_y;
+                // Existing face helpers expect roughly pixels per 16 ms frame.
+                g_state.speed = sqrtf(g_soft_body.velocity_x * g_soft_body.velocity_x +
+                                      g_soft_body.velocity_y * g_soft_body.velocity_y) * 0.016f;
+                g_state.t += (elapsed > 64 ? 64 : elapsed) * 0.005f;
+                soft_body_outline(g_soft_body, g_px, g_py, POINTS);
+                update_blob_bounds();
+                return;
+            }
             float cx = CENTER_X + cosf(g_state.t * 0.7f) * 24.0f;
             float cy = CENTER_Y + sinf(g_state.t * 0.9f) * 18.0f;
             float vx = cosf(g_state.t * 1.2f) * 0.8f;
@@ -233,7 +257,17 @@ namespace blob_native
             g_state.cx = CENTER_X;
             g_state.cy = CENTER_Y;
             g_state.speed = 0.0f;
-            compute_blob(CENTER_X, CENTER_Y, 0.0f, 0.0f, 0.0f, g_px, g_py);
+            g_last_blob_ms = millis();
+            if (BLOB_SOFT_BODY_ENABLED)
+            {
+                soft_body_reset(g_soft_body, CENTER_X, CENTER_Y, BLOB_RADIUS,
+                                CENTER_X - BLOB_OUTLINE_WIDTH - 2);
+                soft_body_outline(g_soft_body, g_px, g_py, POINTS);
+            }
+            else
+            {
+                compute_blob(CENTER_X, CENTER_Y, 0.0f, 0.0f, 0.0f, g_px, g_py);
+            }
         }
 
         void compute_point_bounds(const int16_t *px, const int16_t *py, int16_t *min_x, int16_t *min_y, int16_t *max_x, int16_t *max_y)

@@ -187,3 +187,70 @@ The filled radius-50 Blob measured about 30–32 FPS on the board after startup,
 versus 34–36 FPS for the outline-only version. Motion changes the dirty area;
 these are indicative serial samples rather than identical motion recordings.
 The USB connection was manually unplugged after the filled sample, not a crash.
+
+## Local 2D soft-body prototype
+
+The local branch `codex/local-softbody-prototype` replaces the animated sine-wave
+contour with a circular rest shape and persistent physics state. No firmware has
+been uploaded for this experiment. `BLOB_SOFT_BODY_ENABLED` selects it;
+`BLOB_SOFT_BODY_ACCELERATION` controls tilt strength. Radius, the 2 px outline,
+face colors and navigation remain unchanged.
+
+The independently written C++ model uses the particle/shape-matching concepts
+explained in [Lisyarus' article](https://lisyarus.github.io/blog/posts/soft-body-physics.html)
+and the [PICO-8 prototype](https://www.lexaloffle.com/bbs/?tid=141367). No cartridge
+code or assets were copied. Each of 24 points owns a position and velocity;
+neighbour springs resist stretching. A best-fit rotated rest shape supplies
+restoring forces, and damping reduces deformation while allowing overall motion.
+Tilt acts as acceleration, rather than a target position. Points colliding with
+the circular bezel are projected inward, their outward velocity is reflected,
+and tangential friction removes some sliding energy. This is shape matching,
+not a pressure/constant-volume solver; volume is only approximately preserved.
+
+Physics advances in fixed 8 ms steps independently of display refresh, with at
+most eight steps per update. Long stalls discard excess elapsed time to bound
+work. A 48-point closed Catmull-Rom contour smooths the physics points; boundary
+clipping prevents interpolation from drawing outside the arena. The face follows
+the particle centroid upright. Existing blink/bob helpers still animate the face;
+they do not deform the physical contour. Returning to the Blob page resets its
+state, matching the existing page lifecycle.
+
+Run the local preview:
+
+```sh
+cmake --build simulator/build-release --parallel
+./simulator/build-release/blob_simulator
+```
+
+Use W/X/A/D to tilt, R to remove tilt, and arrows to navigate. There is no touch
+dragging in this prototype, so swipes keep their existing meaning. Neutral tilt
+means zero acceleration: the Blob starts still and, after motion, settles where
+its remaining momentum and contact forces take it rather than recentering.
+
+Generate the deterministic six-second demo and optional GIF:
+
+```sh
+./simulator/build-release/blob_simulator --softbody-demo --output /tmp/blob-softbody
+ffmpeg -y -framerate 25 -i /tmp/blob-softbody/frame-%03d.bmp \
+  -filter_complex '[0:v]split[a][b];[a]palettegen[p];[b][p]paletteuse' \
+  /tmp/blob-softbody/softbody.gif
+```
+
+The model stores 704 bytes, with no heap allocation. On this Mac, 100,000 fixed
+steps take about 20–25 ms in Release; this is not RP2040 timing or animation FPS.
+The existing display benchmark measures about 13,225 pixels per neutral frame.
+Device FPS must be measured separately before calling this performance-ready.
+
+Local regressions cover rest equilibrium, rotation/translation invariance, dent
+recovery, approximate area preservation, identical results across frame partitions,
+bounded catch-up, non-finite input filtering and four simulated minutes of changing
+forces. Samples verify finite/bounded points, positive area and no crossing edges.
+Visual references include rim compression, rebound and settling; the existing
+navigation/timer/brightness tests remain enabled. Default and optional performance
+firmware builds must compile, but testing remains local with no CI or device upload.
+
+Limits: this is a single-body experiment with no general self-collision solver,
+body-to-body contact or exact volume constraint. Stress tests cover the current
+parameters, not arbitrary stiffness/forces. Increasing stiffness requires retesting
+the fixed integration step, and a highly compressed contour could require more
+robust topology handling before adding dragging or obstacles.

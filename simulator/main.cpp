@@ -11,16 +11,18 @@ int main(int argc, char **argv)
 {
     bool test = false;
     bool benchmark = false;
+    bool demo = false;
     std::filesystem::path output = "screenshots";
     for (int i = 1; i < argc; ++i)
     {
         const std::string argument = argv[i];
         if (argument == "--test") test = true;
         else if (argument == "--benchmark") benchmark = true;
+        else if (argument == "--softbody-demo") demo = true;
         else if (argument == "--output" && i + 1 < argc) output = argv[++i];
         else if (argument == "--help")
         {
-            std::cout << "blob_simulator [--test --output DIRECTORY] [--benchmark]\n"
+            std::cout << "blob_simulator [--test --output DIRECTORY] [--benchmark] [--softbody-demo --output DIRECTORY]\n"
                       << "Mouse: touch/drag/swipe. Left/Right: pages. W/X/A/D: tilt; R: reset.\n"
                       << "Space: toggle 10x clock. S: screenshot.bmp. Escape: quit.\n";
             return 0;
@@ -29,10 +31,16 @@ int main(int argc, char **argv)
     }
     try
     {
-        simulator::init(test || benchmark);
+        simulator::init(test || benchmark || demo);
         blob_native::lv_port_init();
         blob_native::page_manager_init();
         simulator::step(50);
+        if (demo)
+        {
+            simulator::soft_body_demo(output);
+            simulator::shutdown();
+            return 0;
+        }
         if (benchmark)
         {
             simulator::benchmark_blob();

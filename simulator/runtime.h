@@ -8,6 +8,7 @@ constexpr int width = 240;
 constexpr int height = 240;
 void init(bool headless);
 void benchmark_blob();
+void soft_body_demo(const std::filesystem::path &output);
 void shutdown();
 void advance(uint32_t milliseconds);
 void step(uint32_t milliseconds = 10);

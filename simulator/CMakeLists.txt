@@ -31,12 +31,12 @@ target_compile_definitions(lvgl_sim PUBLIC LV_CONF_INCLUDE_SIMPLE)
 target_include_directories(lvgl_sim PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/compat" "${APP}/lv_port" "${LVGL_SOURCE_DIR}")
 add_executable(blob_simulator
-    main.cpp runtime.cpp scenarios.cpp blob_benchmark.cpp
+    main.cpp runtime.cpp scenarios.cpp blob_benchmark.cpp soft_body_demo.cpp
     "${APP_ROOT}/platform/desktop/waveshare_desktop_board.cpp"
     "${APP}/lv_port/lv_port.cpp" "${APP}/lv_port/theme.cpp"
     "${APP}/pages/page_manager.cpp" "${APP}/pages/blob/blob_page.cpp"
     "${APP}/pages/timer/timer_page.cpp" "${APP}/pages/brightness/brightness_page.cpp"
-    "${APP}/timer/runtime_draw.cpp" "${APP}/timer/logic.cpp" "${APP}/blob/shape.cpp" "${APP}/blob/face.cpp")
+    "${APP}/timer/runtime_draw.cpp" "${APP}/timer/logic.cpp" "${APP}/blob/shape.cpp" "${APP}/blob/face.cpp" "${APP}/blob/soft_body.cpp")
 target_compile_definitions(blob_simulator PRIVATE BLOB_DESKTOP_SIMULATOR)
 target_include_directories(blob_simulator PRIVATE "${APP_ROOT}" "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(blob_simulator PRIVATE lvgl_sim SDL2::SDL2)
@@ -56,3 +56,7 @@ add_test(NAME timer_logic_regression COMMAND "${Python3_EXECUTABLE}"
 add_executable(blob_shape_benchmark tests/blob_shape_benchmark.cpp "${APP}/blob/shape.cpp")
 target_include_directories(blob_shape_benchmark PRIVATE "${APP_ROOT}" "${CMAKE_CURRENT_SOURCE_DIR}/compat")
 add_test(NAME blob_shape_regression COMMAND blob_shape_benchmark)
+
+add_executable(soft_body_test tests/soft_body_test.cpp "${APP}/blob/soft_body.cpp")
+target_include_directories(soft_body_test PRIVATE "${APP_ROOT}")
+add_test(NAME soft_body_regression COMMAND soft_body_test)

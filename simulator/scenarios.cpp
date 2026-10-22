@@ -302,6 +302,18 @@ bool run_scenarios(const std::filesystem::path &output)
     expect(!timer_running(), "Held swipe and release cannot activate destination Play button");
     click(120, 164);
     expect(timer_running(), "Fresh tap works immediately after swipe release");
+    // Exercise the physical contour through the same tilt adapter used by IMU.
+    swipe(Gesture::Right);
+    set_tilt(-0.6f, 0.8f);
+    step(1600);
+    capture("softbody-rim");
+    expect(lv_scr_act() == blob_screen, "Tilt deforms Blob without changing pages");
+    set_tilt(0.7f, -0.7f);
+    step(400);
+    capture("softbody-rebound");
+    set_tilt(0, 0);
+    step(2000);
+    capture("softbody-settled");
     std::ofstream report(output / "report.json");
     report << "{\"passed\":" << passed << ",\"failed\":" << failures.size() << ",\"failures\":[";
     for (size_t i = 0; i < failures.size(); ++i) report << (i ? "," : "") << '"' << failures[i] << '"';
