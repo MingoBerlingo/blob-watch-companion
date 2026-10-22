@@ -24,7 +24,7 @@ This folder contains LVGL-based blob and timer screens plus a page manager that 
 - `timer/`
   - `view.h` / `logic.cpp` / `internal.h` - timer state machine + accessors;
     rendering is handled by the LVGL page.
-  - `runtime_draw.h` / `runtime_draw.cpp` - segmented ring and geometric action icons.
+  - `runtime_draw.h` / `runtime_draw.cpp` - continuous progress ring and geometric action icons.
 
 - `shared_state.h`
   - Shared geometry/color constants.
@@ -38,7 +38,7 @@ framebuffer (byte-swapped RGB565) and pushes dirty windows over SPI.
 - Blob: a 33 ms LVGL timer advances the animation and invalidates a full-screen
   object; its `LV_EVENT_DRAW_MAIN` handler draws glow/outline/face with LVGL
   draw primitives (reusing the geometry in `blob/`).
-- Timer: LVGL labels/buttons, a custom segmented ring and primitive icon drawing.
+- Timer: LVGL labels/buttons, a continuous LVGL progress arc and primitive icon drawing.
 
 ## Main Tuning Knobs
 
@@ -55,7 +55,7 @@ framebuffer (byte-swapped RGB565) and pushes dirty windows over SPI.
 ## Timer Runtime Flow
 
 The duration-selection screen is unchanged. After Start, the running view shows
-remaining time, a segmented ring using the existing theme violet, and an orange
+remaining time, a continuous progress ring using the existing theme violet, and an orange
 pause button. Pause samples the exact remaining duration and freezes the timer.
 Its three actions are gray back to Blob (retain pause), red cancel to setup, and
 green resume. Reentering a paused timer restores its action view.

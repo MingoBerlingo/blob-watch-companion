@@ -47,6 +47,28 @@ def run(destination):
     offset = struct.unpack_from('<I', data, 10)[0]
     index = offset + ((239 - 120) * 240 + 120) * 4
     assert data[index:index + 3] == bytes((255, 0, 123)), 'RGB565 byte order/color conversion'
+    # The countdown must render as one continuous ring, not disconnected ticks.
+    data = (destination / 'timer-reference-running.bmp').read_bytes()
+    offset = struct.unpack_from('<I', data, 10)[0]
+    ring_pixels = set()
+    for y in range(240):
+        for x in range(240):
+            index = offset + ((239 - y) * 240 + x) * 4
+            blue, green, red = data[index:index + 3]
+            if (x - 120) ** 2 + (y - 120) ** 2 >= 100 ** 2 and red > 60 and blue > 150 and green < 40:
+                ring_pixels.add((x, y))
+    components = 0
+    while ring_pixels:
+        components += 1
+        pending = [ring_pixels.pop()]
+        while pending:
+            x, y = pending.pop()
+            for dx, dy in ((-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)):
+                point = (x + dx, y + dy)
+                if point in ring_pixels:
+                    ring_pixels.remove(point)
+                    pending.append(point)
+    assert components == 1, f'Countdown ring is fragmented into {components} pieces'
     return report
 
 run(output)

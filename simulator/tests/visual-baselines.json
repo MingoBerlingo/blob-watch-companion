@@ -4,11 +4,11 @@
   "brightness-low.bmp": "f6f2b5e96211663aedffc098e2deb2498eacf3f14526f5c8719b8253614d1b09",
   "brightness.bmp": "181abd51c8ba97f8bff87c7e37f75cc86990f42f501190c8a48a2dde77c0046b",
   "color-check.bmp": "4de61c8dc4a1409713483297f6bedc30a209cc61d1067f0870716559e8063b14",
-  "timer-expired.bmp": "672b50e9ce5c88142aa7255b47c5fba57fda812c61580c8dc294ba0a4ef22ad6",
-  "timer-paused.bmp": "431691e53370214f204587fcbbc9c0d64ec0053f9cf3796d8eda4e1be1aa463d",
-  "timer-reference-ended.bmp": "073b255568c10f60dcb57a57b964f1d5902b6403c7176f9b26709b4db7a50f55",
-  "timer-reference-paused.bmp": "bb71a4e32a23ab72f9936273f5b8d311f7da97a4bdebc4bf4606db042c8b679e",
-  "timer-reference-running.bmp": "c6c3d152808cd631e38c946b5f35a963d1a4b4a27df3fd88455f0a0210bde18d",
-  "timer-running.bmp": "7a28544807a24d245be7d9994363f62ee0604624dc6c3b1e201fe01819bb7cfa",
+  "timer-expired.bmp": "5baba8e48530e424d09e0597d32c655f1f01d3524de8a20200768427cbe6df08",
+  "timer-paused.bmp": "04be0697b862a643618a9afb986e360dcf326262ff226ee142af30e0f0f16550",
+  "timer-reference-ended.bmp": "d7f7ce5c4c4b15b37a0d32f671c4238a8600b907daf2e36dd5f693d1cc542152",
+  "timer-reference-paused.bmp": "5c78a679c0809872da9f08a37fa3b011ad87dd7329f21d098e16bc45bab09904",
+  "timer-reference-running.bmp": "64843b700bd13ba880e6e6cab0d3a63efcd93366a461b55f8ad982c1bc0b3779",
+  "timer-running.bmp": "e4a27692983927af3c3789e83ab9054a58e071ddc87dc07ed9a98708a00e8a97",
   "timer-setup.bmp": "a90fa24f84ce82587858080a15e59534412f3a13e3eaa6ddfdb4e5bbdc50d363"
 }

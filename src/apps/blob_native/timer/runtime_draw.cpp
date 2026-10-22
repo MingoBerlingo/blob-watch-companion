@@ -7,11 +7,7 @@ namespace blob_native
 {
     namespace
     {
-        constexpr int kSegments = 48;
         constexpr int kButtonSize = 68;
-        constexpr int kOuterRadius = 111;
-        constexpr int kInnerRadius = 95;
-        int g_lit_segments = -1;
 
         void line(lv_draw_ctx_t *context, lv_coord_t x0, lv_coord_t y0,
                   lv_coord_t x1, lv_coord_t y1, lv_color_t color, uint8_t width)
@@ -61,8 +57,27 @@ namespace blob_native
             }
             else if (icon == TimerIcon::Back)
             {
-                line(context, x + 7, y - 15, x - 8, y, black, 7);
-                line(context, x - 8, y, x + 7, y + 15, black, 7);
+                // A filled outline gives both the outer tip and inner corner a true
+                // miter. Two independently stroked lines leave a broken elbow.
+                lv_draw_rect_dsc_t shape;
+                lv_draw_rect_dsc_init(&shape);
+                shape.bg_color = black;
+                shape.bg_opa = LV_OPA_COVER;
+                lv_point_t outline[5] = {
+                    {static_cast<lv_coord_t>(x - 11), y},
+                    {static_cast<lv_coord_t>(x + 8), static_cast<lv_coord_t>(y - 19)},
+                    {static_cast<lv_coord_t>(x + 14), static_cast<lv_coord_t>(y - 13)},
+                    {static_cast<lv_coord_t>(x + 14), static_cast<lv_coord_t>(y + 13)},
+                    {static_cast<lv_coord_t>(x + 8), static_cast<lv_coord_t>(y + 19)}};
+                lv_draw_polygon(context, &shape, outline, 5);
+                // LVGL supports convex polygons. Subtract the notch using the
+                // button's current color, including its pressed-state shade.
+                shape.bg_color = lv_obj_get_style_bg_color(lv_event_get_target(event), LV_PART_MAIN);
+                lv_point_t notch[3] = {
+                    {static_cast<lv_coord_t>(x + 1), y},
+                    {static_cast<lv_coord_t>(x + 17), static_cast<lv_coord_t>(y - 16)},
+                    {static_cast<lv_coord_t>(x + 17), static_cast<lv_coord_t>(y + 16)}};
+                lv_draw_polygon(context, &shape, notch, 3);
             }
             else if (icon == TimerIcon::Repeat)
             {
@@ -70,61 +85,25 @@ namespace blob_native
                 lv_draw_arc_dsc_init(&arc);
                 arc.color = black;
                 arc.width = 7;
-                lv_point_t center = {x, y};
-                lv_draw_arc(context, &arc, &center, 18, 0, 300);
+                // Offset the circle to optically center the combined arc/head.
+                lv_point_t center = {static_cast<lv_coord_t>(x - 2), static_cast<lv_coord_t>(y + 2)};
+                lv_draw_arc(context, &arc, &center, 18, 45, 315);
                 lv_draw_rect_dsc_t arrow;
                 lv_draw_rect_dsc_init(&arrow);
                 arrow.bg_color = black;
                 arrow.bg_opa = LV_OPA_COVER;
+                // Head points along the clockwise tangent at 315 degrees and
+                // overlaps the arc end so there is no gap or abrupt elbow.
                 lv_point_t points[3] = {
-                    {static_cast<lv_coord_t>(x + 18), static_cast<lv_coord_t>(y - 8)},
-                    {static_cast<lv_coord_t>(x + 6), static_cast<lv_coord_t>(y - 24)},
-                    {static_cast<lv_coord_t>(x - 2), static_cast<lv_coord_t>(y - 8)}};
+                    {static_cast<lv_coord_t>(center.x + 19), static_cast<lv_coord_t>(center.y - 3)},
+                    {static_cast<lv_coord_t>(center.x - 1), static_cast<lv_coord_t>(center.y - 9)},
+                    {static_cast<lv_coord_t>(center.x + 13), static_cast<lv_coord_t>(center.y - 23)}};
                 lv_draw_polygon(context, &arrow, points, 3);
             }
             else
             {
                 line(context, x - 10, y - 10, x + 10, y + 10, black, 7);
                 line(context, x + 10, y - 10, x - 10, y + 10, black, 7);
-            }
-        }
-
-        int sine_half_degree(int angle_twice)
-        {
-            // Use LVGL's integer table: host libm rounding at half-pixel boundaries
-            // otherwise moves a few ticks by one pixel between Mac, Linux and RP2040.
-            const int wrapped = (angle_twice % 720 + 720) % 720;
-            const int angle = wrapped / 2;
-            const int first = lv_trigo_sin(angle);
-            return wrapped % 2 ? (first + lv_trigo_sin(angle + 1)) / 2 : first;
-        }
-
-        lv_coord_t project(lv_coord_t center, int radius, int unit)
-        {
-            const int scaled = radius * unit;
-            const int rounding = scaled >= 0 ? LV_TRIGO_SIN_MAX / 2 : -LV_TRIGO_SIN_MAX / 2;
-            return static_cast<lv_coord_t>(center + (scaled + rounding) / LV_TRIGO_SIN_MAX);
-        }
-
-        void draw_ring(lv_event_t *event)
-        {
-            lv_draw_ctx_t *context = lv_event_get_draw_ctx(event);
-            if (!context) return;
-            lv_area_t area;
-            lv_obj_get_coords(lv_event_get_target(event), &area);
-            const lv_coord_t center_x = area.x1 + SCREEN_W / 2;
-            const lv_coord_t center_y = area.y1 + SCREEN_H / 2;
-            const lv_color_t color = lv_theme_get_color_primary(lv_event_get_target(event));
-            for (int i = 0; i < g_lit_segments; ++i)
-            {
-                const int angle_twice = i * 720 / kSegments - 180;
-                const int dx = sine_half_degree(angle_twice + 180);
-                const int dy = sine_half_degree(angle_twice);
-                line(context,
-                     project(center_x, kInnerRadius, dx),
-                     project(center_y, kInnerRadius, dy),
-                     project(center_x, kOuterRadius, dx),
-                     project(center_y, kOuterRadius, dy), color, 6);
             }
         }
     }
@@ -149,24 +128,30 @@ namespace blob_native
 
     lv_obj_t *timer_create_progress_ring(lv_obj_t *parent)
     {
-        lv_obj_t *ring = lv_obj_create(parent);
-        lv_obj_remove_style_all(ring);
+        lv_obj_t *ring = lv_arc_create(parent);
         lv_obj_clear_flag(ring, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_set_size(ring, SCREEN_W, SCREEN_H);
-        lv_obj_set_pos(ring, 0, 0);
-        g_lit_segments = -1;
-        lv_obj_add_event_cb(ring, draw_ring, LV_EVENT_DRAW_MAIN, nullptr);
+        lv_obj_set_pos(ring, 2, 2);
+        lv_obj_set_size(ring, 236, 236);
+        lv_obj_set_style_pad_all(ring, 0, 0);
+        lv_arc_set_bg_angles(ring, 0, 360);
+        lv_arc_set_rotation(ring, 270);
+        lv_arc_set_range(ring, 0, 10000);
+        lv_arc_set_value(ring, 0);
+        lv_arc_set_mode(ring, LV_ARC_MODE_NORMAL);
+        lv_obj_set_style_arc_width(ring, 8, LV_PART_MAIN);
+        lv_obj_set_style_arc_width(ring, 8, LV_PART_INDICATOR);
+        lv_obj_set_style_arc_color(ring, lv_rgb565(BG_COLOR), LV_PART_MAIN);
+        lv_obj_set_style_arc_color(ring, lv_theme_get_color_primary(parent), LV_PART_INDICATOR);
+        lv_obj_set_style_arc_rounded(ring, true, LV_PART_INDICATOR);
+        lv_obj_set_style_bg_opa(ring, LV_OPA_TRANSP, 0);
+        lv_obj_remove_style(ring, nullptr, LV_PART_KNOB);
         return ring;
     }
 
     void timer_refresh_progress_ring(lv_obj_t *ring, uint32_t remaining, uint32_t total)
     {
-        int lit = total ? static_cast<int>((static_cast<uint64_t>(remaining) * kSegments + total - 1) / total) : 0;
-        if (lit > kSegments) lit = kSegments;
-        if (lit != g_lit_segments)
-        {
-            g_lit_segments = lit;
-            lv_obj_invalidate(ring);
-        }
+        const uint32_t bounded = remaining > total ? total : remaining;
+        const int32_t value = total ? static_cast<int32_t>(static_cast<uint64_t>(bounded) * 10000 / total) : 0;
+        lv_arc_set_value(ring, value);
     }
 }

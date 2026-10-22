@@ -4,11 +4,11 @@
 
 **Goal:** Implement the supplied running/paused timer reference while preserving the setup, Blob and Brightness screens.
 
-**Architecture:** Keep the shared LVGL pages and timer state machine. Draw the segmented ring and geometric button icons with LVGL primitives; route the back button through the page manager. Store RGB565 action colors in shared_state.h and reuse the existing violet theme accent.
+**Architecture:** Keep the shared LVGL pages and timer state machine. Use a continuous LVGL progress arc and draw geometric button icons with LVGL primitives; route the back button through the page manager. Store RGB565 action colors in shared_state.h and reuse the existing violet theme accent.
 
 **Tech Stack:** Existing LVGL 8.3.11, RP2040 PlatformIO firmware, CMake/SDL simulator.
 
-**Spec:** User's attached flow: running screen with segmented violet progress, large remaining time and orange pause; paused screen with smaller time, silver back-to-Blob, red cancel-to-setup and green resume. Only started timer UI changes. Icons use basic drawing primitives. Colors chosen from newdigate/rgb565_colors README. The user authorized implementation and asked questions up front; expiry clarification was offered asynchronously.
+**Spec:** User's attached flow: running screen with continuous violet progress, large remaining time and orange pause; paused screen with smaller time, silver back-to-Blob, red cancel-to-setup and green resume. Only started timer UI changes. Icons use basic drawing primitives. Colors chosen from newdigate/rgb565_colors README. The user authorized implementation and asked questions up front; expiry clarification was offered asynchronously.
 
 ## Constraints and decisions
 - Preserve setup/Blob/Brightness rendering and navigation outside the new back action.
@@ -47,3 +47,5 @@
 - CI follow-up: all 43 behavior checks passed on Linux, but 64 ring pixels differed due to host libm half-pixel rounding. Replaced floating-point ring geometry with LVGL integer sine interpolation/projection; re-inspected ring references, reran local tests, and obtained a second independent review with no material findings. Increased the time formatting buffer to 16 bytes for GCC range diagnostics.
 
 - User preference: tests must run locally, with no GitHub CI minute consumption. Disabled the workflow, cancelled active runs and changed its triggers to manual-only; recorded the policy in AGENTS.md. Further cross-platform validation uses local containers only.
+
+- User refinement: restored the original continuous lv_arc progress indicator, replaced the two-stroke chevron with a filled mitered silhouette, and aligned/overlapped the repeat arrowhead with its arc tangent. A pixel-connectivity regression failed on 48 old fragments and now passes; inspected updated references and reran all local tests and pio run. Independent review found no material issues.
