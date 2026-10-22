@@ -43,3 +43,5 @@
 - Firmware: pio run passes (45,672 bytes RAM; 318,372 bytes flash). Independent reviewer reports no material findings.
 
 - Published branch codex/timer-running-controls and opened PR #4 targeting feat--timer. GitHub Actions runs the same integration/visual checks remotely.
+
+- CI follow-up: all 43 behavior checks passed on Linux, but 64 ring pixels differed due to host libm half-pixel rounding. Replaced floating-point ring geometry with LVGL integer sine interpolation/projection; re-inspected ring references, reran local tests, and obtained a second independent review with no material findings. Increased the time formatting buffer to 16 bytes for GCC range diagnostics.

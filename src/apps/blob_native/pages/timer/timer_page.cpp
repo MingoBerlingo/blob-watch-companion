@@ -196,7 +196,7 @@ namespace blob_native
                 const int32_t disp = show_ended ? timer_total_seconds() : timer_display_seconds_value();
                 if (force || disp != g_last_display_seconds)
                 {
-                    char buf[12];
+                    char buf[16];
                     snprintf(buf, sizeof(buf), "%02ld:%02ld", (long)(disp / 60), (long)(disp % 60));
                     lv_label_set_text(g_time_label, buf);
                     g_last_display_seconds = disp;

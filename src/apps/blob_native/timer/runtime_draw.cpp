@@ -1,7 +1,5 @@
 #include "apps/blob_native/timer/runtime_draw.h"
 
-#include <math.h>
-
 #include "apps/blob_native/lv_port/lv_port.h"
 #include "apps/blob_native/shared_state.h"
 
@@ -11,8 +9,8 @@ namespace blob_native
     {
         constexpr int kSegments = 48;
         constexpr int kButtonSize = 68;
-        constexpr float kOuterRadius = 111.0f;
-        constexpr float kInnerRadius = 95.0f;
+        constexpr int kOuterRadius = 111;
+        constexpr int kInnerRadius = 95;
         int g_lit_segments = -1;
 
         void line(lv_draw_ctx_t *context, lv_coord_t x0, lv_coord_t y0,
@@ -91,24 +89,42 @@ namespace blob_native
             }
         }
 
+        int sine_half_degree(int angle_twice)
+        {
+            // Use LVGL's integer table: host libm rounding at half-pixel boundaries
+            // otherwise moves a few ticks by one pixel between Mac, Linux and RP2040.
+            const int wrapped = (angle_twice % 720 + 720) % 720;
+            const int angle = wrapped / 2;
+            const int first = lv_trigo_sin(angle);
+            return wrapped % 2 ? (first + lv_trigo_sin(angle + 1)) / 2 : first;
+        }
+
+        lv_coord_t project(lv_coord_t center, int radius, int unit)
+        {
+            const int scaled = radius * unit;
+            const int rounding = scaled >= 0 ? LV_TRIGO_SIN_MAX / 2 : -LV_TRIGO_SIN_MAX / 2;
+            return static_cast<lv_coord_t>(center + (scaled + rounding) / LV_TRIGO_SIN_MAX);
+        }
+
         void draw_ring(lv_event_t *event)
         {
             lv_draw_ctx_t *context = lv_event_get_draw_ctx(event);
             if (!context) return;
             lv_area_t area;
             lv_obj_get_coords(lv_event_get_target(event), &area);
-            const float center_x = area.x1 + CENTER_X;
-            const float center_y = area.y1 + CENTER_Y;
+            const lv_coord_t center_x = area.x1 + SCREEN_W / 2;
+            const lv_coord_t center_y = area.y1 + SCREEN_H / 2;
             const lv_color_t color = lv_theme_get_color_primary(lv_event_get_target(event));
             for (int i = 0; i < g_lit_segments; ++i)
             {
-                const float angle = (i * 360.0f / kSegments - 90.0f) * 0.01745329252f;
-                const float dx = cosf(angle), dy = sinf(angle);
+                const int angle_twice = i * 720 / kSegments - 180;
+                const int dx = sine_half_degree(angle_twice + 180);
+                const int dy = sine_half_degree(angle_twice);
                 line(context,
-                     static_cast<lv_coord_t>(lroundf(center_x + kInnerRadius * dx)),
-                     static_cast<lv_coord_t>(lroundf(center_y + kInnerRadius * dy)),
-                     static_cast<lv_coord_t>(lroundf(center_x + kOuterRadius * dx)),
-                     static_cast<lv_coord_t>(lroundf(center_y + kOuterRadius * dy)), color, 6);
+                     project(center_x, kInnerRadius, dx),
+                     project(center_y, kInnerRadius, dy),
+                     project(center_x, kOuterRadius, dx),
+                     project(center_y, kOuterRadius, dy), color, 6);
             }
         }
     }
