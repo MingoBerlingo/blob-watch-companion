@@ -53,7 +53,9 @@ void DEV_SPI_WriteByte(uint8_t Value)
 
 void DEV_SPI_Write_nByte(uint8_t pData[], uint32_t Len)
 {
-     SPI1.transfer(pData, Len);
+    // The two-argument overload exchanges one byte at a time and overwrites
+    // the source buffer. A null RX buffer selects the RP2040 bulk TX path.
+    SPI1.transfer(pData, nullptr, Len);
 }
 
 /**

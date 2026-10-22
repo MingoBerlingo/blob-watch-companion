@@ -1,3 +1,9 @@
 .DS_Store
 .pio/
 .vscode/
+compile_commands.json
+
+# Desktop simulator build and generated captures
+simulator/build*/
+screenshots/
+screenshot.bmp

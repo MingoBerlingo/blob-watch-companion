@@ -1,0 +1,106 @@
+"""End-to-end contract: real LVGL interactions, deterministic pixels, and circle mask."""
+import binascii
+import hashlib
+import json
+from pathlib import Path
+import struct
+import shutil
+import zlib
+import subprocess
+import sys
+import tempfile
+
+def export_png(source):
+    data = source.read_bytes()
+    offset = struct.unpack_from('<I', data, 10)[0]
+    rows = []
+    for y in range(239, -1, -1):
+        row = data[offset + y * 960:offset + (y + 1) * 960]
+        rows.append(b'\0' + b''.join(bytes((row[x + 2], row[x + 1], row[x])) for x in range(0, 960, 4)))
+    def chunk(kind, payload):
+        body = kind + payload
+        return struct.pack('>I', len(payload)) + body + struct.pack('>I', binascii.crc32(body) & 0xffffffff)
+    source.with_suffix('.png').write_bytes(b'\x89PNG\r\n\x1a\n' +
+        chunk(b'IHDR', struct.pack('>IIBBBBB', 240, 240, 8, 2, 0, 0, 0)) +
+        chunk(b'IDAT', zlib.compress(b''.join(rows))) + chunk(b'IEND', b''))
+
+executable = Path(sys.argv[1]).resolve()
+output = Path(sys.argv[2]).resolve()
+output.mkdir(parents=True, exist_ok=True)
+
+def run(destination):
+    subprocess.run([str(executable), '--test', '--output', str(destination)], check=True)
+    report = json.loads((destination / 'report.json').read_text())
+    assert report['passed'] >= 45, report
+    assert report['failed'] == 0, report
+    for name in ('blob', 'timer-setup', 'brightness', 'brightness-low', 'brightness-high', 'timer-running', 'timer-paused', 'timer-expired'):
+        data = (destination / (name + '.bmp')).read_bytes()
+        assert data[:2] == b'BM', name
+        assert struct.unpack_from('<ii', data, 18) == (240, 240), name
+        offset = struct.unpack_from('<I', data, 10)[0]
+        assert struct.unpack_from('<H', data, 28)[0] == 32, name
+        pixels = data[offset:]
+        # A 32-bit SDL BMP encodes the round bezel in the exported pixels too.
+        assert pixels[:3] == bytes((24, 24, 24)), name
+        assert len(set(pixels)) > 8, name
+    data = (destination / 'blob.bmp').read_bytes()
+    offset = struct.unpack_from('<I', data, 10)[0]
+    center = offset + ((239 - 120) * 240 + 120) * 4
+    assert data[center:center + 3] == bytes((0, 0, 0)), 'Outline Blob must keep a black interior'
+    colors = [data[i:i + 3] for i in range(offset, offset + 240 * 240 * 4, 4)]
+    assert 550 < sum(c[0] > 100 and c[2] > 40 and c[1] < 20 for c in colors) < 2500, 'Blob must have a thick outline without a solid fill'
+    assert sum(c[0] > 180 and c[1] > 180 and c[2] < 180 for c in colors) > 8, 'Face must remain visible inside the outline'
+    data = (destination / 'color-check.bmp').read_bytes()
+    offset = struct.unpack_from('<I', data, 10)[0]
+    index = offset + ((239 - 120) * 240 + 120) * 4
+    assert data[index:index + 3] == bytes((255, 0, 123)), 'RGB565 byte order/color conversion'
+    # The countdown must render as one continuous ring, not disconnected ticks.
+    data = (destination / 'timer-reference-running.bmp').read_bytes()
+    offset = struct.unpack_from('<I', data, 10)[0]
+    ring_pixels = set()
+    for y in range(240):
+        for x in range(240):
+            index = offset + ((239 - y) * 240 + x) * 4
+            blue, green, red = data[index:index + 3]
+            if (x - 120) ** 2 + (y - 120) ** 2 >= 100 ** 2 and red > 60 and blue > 150 and green < 40:
+                ring_pixels.add((x, y))
+    components = 0
+    while ring_pixels:
+        components += 1
+        pending = [ring_pixels.pop()]
+        while pending:
+            x, y = pending.pop()
+            for dx, dy in ((-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)):
+                point = (x + dx, y + dy)
+                if point in ring_pixels:
+                    ring_pixels.remove(point)
+                    pending.append(point)
+    assert components == 1, f'Countdown ring is fragmented into {components} pieces'
+    return report
+
+run(output)
+with tempfile.TemporaryDirectory() as directory:
+    repeat = Path(directory)
+    run(repeat)
+    for path in output.glob('*.bmp'):
+        assert path.read_bytes() == (repeat / path.name).read_bytes(), path.name
+print('Simulator integration and deterministic screenshot checks passed')
+
+# Intentional UI changes require an explicit baseline update after image inspection.
+baseline_path = Path(__file__).with_name('visual-baselines.json')
+hashes = {}
+for path in sorted(output.glob('*.bmp')):
+    data = path.read_bytes()
+    offset = struct.unpack_from('<I', data, 10)[0]
+    export_png(path)
+    hashes[path.name] = hashlib.sha256(data[offset:offset + 240 * 240 * 4]).hexdigest()
+if len(sys.argv) > 3 and sys.argv[3] == '--update-baselines':
+    baseline_path.write_text(json.dumps(hashes, indent=2) + '\n')
+    references = baseline_path.with_name('baselines')
+    references.mkdir(exist_ok=True)
+    for path in output.glob('*.png'):
+        shutil.copyfile(path, references / path.name)
+else:
+    expected = json.loads(baseline_path.read_text())
+    assert hashes == expected, 'Visual regression: inspect screenshots before updating visual-baselines.json'
+print('Visual baselines match')

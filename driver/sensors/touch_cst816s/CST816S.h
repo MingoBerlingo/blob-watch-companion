@@ -14,8 +14,8 @@
 #ifndef __CST816S_H
 #define __CST816S_H
 #include "DEV_Config.h"
-#include <stdlib.h> //itoa()
 #include <stdio.h>
+#include <stdlib.h> //itoa()
 
 #define CST816_ADDR (0x15)
 
@@ -42,7 +42,7 @@ typedef enum
 	CST816_IrqPluseWidth = 0xED,
 	CST816_NorScanPer,
 	CST816_MotionSlAngle,
-	CST816_LpScanRaw1H =0XF0,
+	CST816_LpScanRaw1H = 0XF0,
 	CST816_LpScanRaw1L,
 	CST816_LpScanRaw2H,
 	CST816_LpScanRaw2L,
@@ -78,7 +78,7 @@ typedef enum
 	CST816S_Gesture_Right,
 	CST816S_Gesture_Click,
 	CST816S_Gesture_Double_Click = 0x0b,
-	CST816S_Gesture_Long_Press=0x0c,
+	CST816S_Gesture_Long_Press = 0x0c,
 } CST816S_Gesture;
 
 struct CST816S
@@ -87,12 +87,13 @@ struct CST816S
 	uint16_t y_point;
 	uint8_t Gesture;
 	uint8_t mode;
-} ;
+};
 
 extern CST816S Touch_CTS816;
 
 uint8_t CST816S_init(uint8_t mode);
 CST816S CST816S_Get_Point();
+uint8_t CST816S_Get_FingerNum(void);
 uint8_t CST816S_Get_Gesture(void);
 
 #endif

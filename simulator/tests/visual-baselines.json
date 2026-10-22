@@ -1,0 +1,14 @@
+{
+  "blob.bmp": "650f4fd38c09a0c7c7751e9213547810b36f1286d462845554dddad1e7ae6c0b",
+  "brightness-high.bmp": "bda92808a32cf801fe5b1811b022f40f1d6bf580c4b9da7ee1eae20ca1d99793",
+  "brightness-low.bmp": "85941ed3c99debed6613555d57086ac6ed04ee3654a545b9868f8f4c8a07a0c5",
+  "brightness.bmp": "df2786a94cee8fc781f559cc79e32a222aec5a8fb4da03c3572c581a3788ba9a",
+  "color-check.bmp": "35025ec02d926f8aafbf3ae989fddd6e38567f3abdf46d3465f22d4edad5f085",
+  "timer-expired.bmp": "5aeb9524be2ad1c69b29aa8e05dfbbae33a270f1f38554402d87599884f74af6",
+  "timer-paused.bmp": "2f166d372360a501e02f5f3c37c8c572c0e0a27e7aaf53527225a1b56e8cf6e9",
+  "timer-reference-ended.bmp": "81a3705ce5a448ad31ddc3fbd3acb9aeb904889b73efefabbe8dd4d05e7ad994",
+  "timer-reference-paused.bmp": "64e2a974f764a41150cb0eee04b1d5fced35d163139cab4affad2afa9b28e5ed",
+  "timer-reference-running.bmp": "c93f1a07dd15ec5a6bfc0c5f885f4587459110f11dba283b1ac043002651b728",
+  "timer-running.bmp": "4fa8bfd0de2d5eabde1f6818bfc65dc70ba5dce136b875862fb2b298d7572dab",
+  "timer-setup.bmp": "a90fa24f84ce82587858080a15e59534412f3a13e3eaa6ddfdb4e5bbdc50d363"
+}
