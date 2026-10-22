@@ -13,6 +13,13 @@ namespace simulator {
 namespace {
 int passed = 0;
 std::vector<std::string> failures;
+int g_flush_calls = 0;
+void (*g_original_flush)(lv_disp_drv_t *, const lv_area_t *, lv_color_t *) = nullptr;
+void count_flush(lv_disp_drv_t *driver, const lv_area_t *area, lv_color_t *pixels)
+{
+    ++g_flush_calls;
+    g_original_flush(driver, area, pixels);
+}
 void expect(bool condition, const std::string &message)
 {
     if (condition) { ++passed; std::cout << "PASS " << message << '\n'; }
@@ -251,6 +258,22 @@ bool run_scenarios(const std::filesystem::path &output)
     handle_events(); // Both transitions arrive before one poll.
     step(100);
     expect(timer_running(), "Batched SDL down and up activate the real Start button");
+    click(120, 164); // Pause before checking idle rendering and the next short tap.
+    step(100);
+    auto *display_driver = lv_disp_get_default()->driver;
+    g_original_flush = display_driver->flush_cb;
+    g_flush_calls = 0;
+    display_driver->flush_cb = count_flush;
+    step(100);
+    display_driver->flush_cb = g_original_flush;
+    expect(g_flush_calls == 0, "Paused timer does not redraw unchanged controls");
+
+    // A short press immediately after a poll is the worst case for sampling.
+    lv_timer_reset(lv_indev_get_next(nullptr)->driver->read_timer);
+    set_touch({true, 120, 164, Gesture::None});
+    step(10);
+    release();
+    expect(timer_running() && !timer_run_controls_visible(), "Ten millisecond tap resumes the paused timer");
     std::ofstream report(output / "report.json");
     report << "{\"passed\":" << passed << ",\"failed\":" << failures.size() << ",\"failures\":[";
     for (size_t i = 0; i < failures.size(); ++i) report << (i ? "," : "") << '"' << failures[i] << '"';

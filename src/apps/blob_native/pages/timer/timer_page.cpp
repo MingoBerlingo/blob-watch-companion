@@ -49,6 +49,8 @@ namespace blob_native
 
         void set_visible(lv_obj_t *obj, bool visible)
         {
+            const bool is_visible = !lv_obj_has_flag(obj, LV_OBJ_FLAG_HIDDEN);
+            if (is_visible == visible) return;
             if (visible)
                 lv_obj_clear_flag(obj, LV_OBJ_FLAG_HIDDEN);
             else
@@ -194,7 +196,8 @@ namespace blob_native
             if (show_run || show_ended)
             {
                 const int32_t disp = show_ended ? timer_total_seconds() : timer_display_seconds_value();
-                if (force || disp != g_last_display_seconds)
+                bool label_changed = force || disp != g_last_display_seconds;
+                if (label_changed)
                 {
                     char buf[16];
                     snprintf(buf, sizeof(buf), "%02ld:%02ld", (long)(disp / 60), (long)(disp % 60));
@@ -208,9 +211,13 @@ namespace blob_native
                     lv_obj_set_style_text_font(g_time_label, show_ended ? &lv_font_montserrat_16 : (controls ? &lv_font_montserrat_14 : &lv_font_montserrat_32), 0);
                     lv_obj_set_style_text_color(g_time_label, show_ended ? col(TIMER_ENDED_TIME_COLOR) : (controls ? col(TIMER_BACK_COLOR) : lv_color_white()), 0);
                     g_last_controls = controls;
+                    label_changed = true;
                 }
-                // Re-align after text updates so changing digit widths stay centered.
-                lv_obj_align(g_time_label, LV_ALIGN_TOP_MID, 0, show_ended ? 44 : (controls ? 42 : 70));
+                // Re-align only after text or view changes, avoiding redundant style invalidation.
+                if (label_changed)
+                {
+                    lv_obj_align(g_time_label, LV_ALIGN_TOP_MID, 0, show_ended ? 44 : (controls ? 42 : 70));
+                }
             }
             g_last_view = view;
         }

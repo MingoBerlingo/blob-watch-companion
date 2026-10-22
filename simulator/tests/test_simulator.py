@@ -31,7 +31,7 @@ output.mkdir(parents=True, exist_ok=True)
 def run(destination):
     subprocess.run([str(executable), '--test', '--output', str(destination)], check=True)
     report = json.loads((destination / 'report.json').read_text())
-    assert report['passed'] >= 43, report
+    assert report['passed'] >= 45, report
     assert report['failed'] == 0, report
     for name in ('blob', 'timer-setup', 'brightness', 'brightness-low', 'brightness-high', 'timer-running', 'timer-paused', 'timer-expired'):
         data = (destination / (name + '.bmp')).read_bytes()
