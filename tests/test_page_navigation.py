@@ -7,6 +7,8 @@ ROOT = Path(__file__).resolve().parents[1]
 with tempfile.TemporaryDirectory() as directory:
     temp = Path(directory)
     headers = {
+        'apps/blob_native/steps/pedometer.h': 'void pedometer_init(uint32_t){} void pedometer_tick(uint32_t){}',
+        'apps/blob_native/pages/steps/steps_page.h': 'void steps_page_init(){} void steps_page_show(){} void steps_page_tick(){} void steps_page_request_reset(){} bool steps_page_reset_open(){return false;}',
         'apps/blob_native/blob/physics_settings.h': 'namespace blob_native { void physics_settings_reset(){} bool physics_settings_load(){return false;} }',
         'apps/blob_native/pages/settings/settings_page.h': 'void settings_page_init(){} void settings_page_show(){}',
         'Arduino.h': '#include <stdint.h>\nuint32_t millis(){return 0;}\nvoid delay(int){}\n',
@@ -45,6 +47,14 @@ int main() {
     navigate({true, 0, 0, Gesture::None});
     navigate({true, 0, 0, Gesture::Right});
     assert(g_page == Page::Blob); // A fresh touch rearms even after a stale gesture.
+    navigate({false, 0, 0, Gesture::None});
+    navigate({true, 0, 0, Gesture::Right});
+    assert(g_page == Page::Steps);
+    navigate({true, 0, 0, Gesture::Left});
+    assert(g_page == Page::Steps); // Same contact cannot bounce back to Blob.
+    navigate({false, 0, 0, Gesture::None});
+    navigate({true, 0, 0, Gesture::Left});
+    assert(g_page == Page::Blob);
 }
 ''')
     executable = temp / 'navigation'

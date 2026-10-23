@@ -24,7 +24,7 @@ int main(int argc, char **argv)
         {
             std::cout << "blob_simulator [--test --output DIRECTORY] [--benchmark] [--softbody-demo --output DIRECTORY]\n"
                       << "Mouse: touch/drag/swipe. Left/Right: pages. W/X/A/D: tilt; R: reset; J/L: shake.\n"
-                      << "Space: toggle 10x clock. S: screenshot.bmp. Escape: quit.\n";
+                      << "P: toggle simulated walking. Space: toggle 10x clock. S: screenshot.bmp. Escape: quit.\n";
             return 0;
         }
         else { std::cerr << "Unknown or incomplete argument: " << argument << '\n'; return 2; }

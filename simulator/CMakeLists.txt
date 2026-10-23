@@ -35,6 +35,7 @@ add_executable(blob_simulator
     "${APP_ROOT}/platform/desktop/waveshare_desktop_board.cpp"
     "${APP}/lv_port/lv_port.cpp" "${APP}/lv_port/theme.cpp"
     "${APP}/blob/physics_settings.cpp" "${APP}/blob/physics_settings_store.cpp"
+    "${APP}/steps/step_counter.cpp" "${APP}/steps/pedometer.cpp" "${APP}/pages/steps/steps_page.cpp"
     "${APP}/pages/settings/settings_page.cpp" "${APP}/pages/page_manager.cpp" "${APP}/pages/blob/blob_page.cpp"
     "${APP}/pages/timer/timer_page.cpp" "${APP}/pages/brightness/brightness_page.cpp"
     "${APP}/timer/runtime_draw.cpp" "${APP}/timer/logic.cpp" "${APP}/blob/shape.cpp" "${APP}/blob/face.cpp" "${APP}/blob/soft_body.cpp" "${APP}/blob/motion_response.cpp")
@@ -71,3 +72,16 @@ add_executable(physics_settings_test tests/physics_settings_test.cpp
     "${APP}/blob/physics_settings.cpp" "${APP}/blob/physics_settings_store.cpp")
 target_include_directories(physics_settings_test PRIVATE "${APP_ROOT}")
 add_test(NAME physics_settings_regression COMMAND physics_settings_test)
+
+add_executable(step_counter_test tests/step_counter_test.cpp "${APP}/steps/step_counter.cpp")
+target_include_directories(step_counter_test PRIVATE "${APP_ROOT}")
+add_test(NAME step_counter_regression COMMAND step_counter_test)
+add_executable(pedometer_test tests/pedometer_test.cpp
+    "${APP}/steps/pedometer.cpp" "${APP}/steps/step_counter.cpp"
+    "${APP}/blob/physics_settings.cpp" "${APP}/blob/physics_settings_store.cpp")
+target_include_directories(pedometer_test PRIVATE "${APP_ROOT}")
+add_test(NAME pedometer_regression COMMAND pedometer_test)
+add_executable(acceleration_adapter_test tests/acceleration_adapter_test.cpp
+    "${APP_ROOT}/platform/waveshare_native_acceleration.cpp")
+target_include_directories(acceleration_adapter_test PRIVATE "${APP_ROOT}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/compat")
+add_test(NAME acceleration_adapter_regression COMMAND acceleration_adapter_test)
