@@ -38,4 +38,17 @@ bool waveshare_native_save_settings(const void *data,size_t size) {
     if(!data || size>sizeof(g_settings_data)) return false;
     memcpy(g_settings_data,data,size);g_settings_size=size;return true;
 }
+bool waveshare_native_read_acceleration(float *x,float *y,float *z){
+    if(!x||!y||!z) return false;
+    simulator::read_acceleration(x,y,z);return true;
+}
+namespace {uint8_t g_step_data[128]{};size_t g_step_size=0;}
+bool waveshare_native_load_step_data(void *data,size_t size){
+    if(!data || size!=g_step_size) return false;
+    memcpy(data,g_step_data,size);return true;
+}
+bool waveshare_native_save_step_data(const void *data,size_t size){
+    if(!data || size>sizeof(g_step_data)) return false;
+    memcpy(g_step_data,data,size);g_step_size=size;return true;
+}
 #endif

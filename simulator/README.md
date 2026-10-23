@@ -297,3 +297,41 @@ those cases, rather than guaranteeing every possible physical input sequence.
 
 Smaller bodies also reduce the acceleration cap, wall overlap and velocity-driven
 stretch to avoid folding at the smallest size. Default-size physics is unchanged.
+
+### Cumulative step counter
+
+The page order is **Steps → Blob → Timer → Brightness**. Swipe right from Blob
+for Steps and left to return. The counter runs on every page. Its green,
+rounded progress ring fills counterclockwise toward 10,000 steps and stays full
+beyond that goal; the numeric total continues increasing. A white vector shoe
+is drawn directly without an image asset or filled badge.
+
+Hold on Steps for about 650 ms to open reset confirmation. Cancel preserves the
+total; the red Reset button clears it only after the reset has been saved.
+The counter is cumulative, with no midnight reset or RTC requirement.
+
+The QMI8658 accelerometer is sampled at 50 Hz through an acceleration-only API,
+independent of the Blob gyro reads. That vendor API returns m/s² (unlike the
+full-motion API's mg); the native adapter explicitly converts to g. Detection
+uses orientation-independent acceleration magnitude, baseline/signal filtering,
+peak hysteresis and width limits, and a consistent 280–1600 ms walking cadence.
+The first three confirmed peaks are credited together; isolated impulses,
+small tremor and overly fast repeated motion are rejected by local regressions.
+These are synthetic validation cases, not measured real-world step accuracy.
+Thresholds may need tuning after walking tests with the actual worn device.
+
+A checksummed record is checkpointed every 100 steps or after five minutes of
+unsaved changes. Sudden power loss may therefore lose the recent uncheckpointed
+steps. Reset saves immediately and reports a failure rather than clearing only
+RAM. The board reserves 64 KB for LittleFS; staged writes are verified and
+atomically renamed. This partition is separate from the existing physics-settings
+EEPROM sector. Only an entirely erased partition may be initialized automatically;
+a mount failure on nonblank data does not format it.
+
+Press **P** in the desktop simulator to toggle synthetic walking. Simulator
+storage lasts for the current process. UI scenarios cover the 2,780-step
+reference, empty/full rings, counts beyond the goal, large-number formatting,
+held swipe navigation, background counting, timer expiry and reset confirmation.
+`step_counter_regression`, `pedometer_regression`, and
+`acceleration_adapter_regression` cover detector behavior, checkpoint/reset
+persistence and native sensor units without running GitHub Actions.

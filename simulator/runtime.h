@@ -18,6 +18,8 @@ void set_brightness(uint8_t percent);
 uint8_t brightness();
 void set_tilt(float x, float y);
 void read_tilt(float *x, float *y);
+void set_walking(bool active);
+void read_acceleration(float *x,float *y,float *z);
 void read_motion(WaveshareNativeMotionSample *sample);
 void shake(float x_g, float y_g);
 void flush(int16_t x0, int16_t y0, int16_t x1, int16_t y1, const uint16_t *pixels);

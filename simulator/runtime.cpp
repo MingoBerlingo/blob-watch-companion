@@ -117,6 +117,17 @@ void read_tilt(float *x, float *y) {
     *y=std::clamp(tilt_y+(shaking?shake_y:0),-1.0f,1.0f);
 }
 void shake(float x_g, float y_g) { shake_x=x_g; shake_y=y_g; shake_until=clock_ms+80; }
+namespace {bool g_walking=false;}
+void set_walking(bool active){g_walking=active;}
+void read_acceleration(float *x,float *y,float *z){
+    read_tilt(x,y);
+    const float squared=(*x)*(*x)+(*y)*(*y);
+    *z=std::sqrt(std::max(0.0f,1-squared));
+    if(g_walking) {
+        const float magnitude=1+0.25f*std::sin(clock_ms*0.001f*11.30973355f);
+        *x*=magnitude;*y*=magnitude;*z*=magnitude;
+    }
+}
 void read_motion(WaveshareNativeMotionSample *sample)
 {
     float gx=tilt_x, gy=tilt_y;
@@ -233,6 +244,7 @@ bool handle_events()
             case SDLK_r: set_tilt(0, 0); break;
             case SDLK_j: shake(0, 0.8f); break;
             case SDLK_l: shake(0, -0.8f); break;
+            case SDLK_p: g_walking=!g_walking; break;
             case SDLK_SPACE: accelerated = !accelerated; break;
             default: break;
             }

@@ -8,6 +8,8 @@
 #include "Arduino.h"
 #include "lvgl.h"
 #include "apps/blob_native/timer/view.h"
+#include "apps/blob_native/steps/pedometer.h"
+#include "apps/blob_native/steps/step_counter.h"
 #include "apps/blob_native/blob/physics_settings.h"
 
 namespace simulator {
@@ -382,6 +384,50 @@ bool run_scenarios(const std::filesystem::path &output)
     button("Save");
     button("Back");
     expect(lv_scr_act()==blob_screen, "Settings Back returns to Blob");
+    auto load_step_fixture=[&](uint32_t total) {
+        uint32_t record[4]={0x53544550,1,total,2166136261u};
+        const auto *bytes=reinterpret_cast<const uint8_t*>(record);
+        for(int i=0;i<12;++i) record[3]=(record[3]^bytes[i])*16777619u;
+        expect(waveshare_native_save_step_data(record,sizeof(record)),"Step checkpoint fixture writes");
+        pedometer_init(millis());
+    };
+    load_step_fixture(0);
+    swipe(Gesture::Right);
+    auto *steps_screen=lv_scr_act();
+    expect(steps_screen!=blob_screen && find(steps_screen,&lv_label_class,"Steps"),"Right swipe opens Steps to the left of Blob");
+    capture("steps-empty");
+    swipe(Gesture::Right);
+    expect(lv_scr_act()==steps_screen,"Held or outward swipe cannot skip the Steps boundary");
+    set_walking(true);
+    swipe(Gesture::Left);
+    expect(lv_scr_act()==blob_screen,"One left swipe returns from Steps to Blob");
+    step(6500);
+    swipe(Gesture::Left);step(2000);
+    swipe(Gesture::Right);swipe(Gesture::Right);
+    set_walking(false);step(1000);
+    expect(lv_scr_act()==steps_screen && pedometer_total()>=10,"Step counting continues while Blob and Timer are visible");
+    expect(static_cast<uint32_t>(lv_arc_get_value(widget(&lv_arc_class)))==pedometer_total(),"Steps ring reflects the live count");
+    load_step_fixture(2780);step(40);
+    expect(find(steps_screen,&lv_label_class,"2,780"),"Restored total uses thousands separators");
+    capture("steps-reference");
+    timer_cancel();timer_set_minutes(0);timer_set_seconds(1);timer_start(millis());step(1200);
+    expect(!timer_running(),"Timer still expires while Steps is visible");
+    set_touch({true,120,120,Gesture::None});step(800);release();
+    expect(find(steps_screen,&lv_label_class,"Reset steps?") && pedometer_total()==2780,
+           "Long press opens confirmation without resetting the total");
+    capture("steps-reset-confirm");
+    button("Cancel");expect(pedometer_total()==2780,"Cancelling reset preserves the total");
+    set_touch({true,120,120,Gesture::None});step(800);release();button("Reset");
+    expect(pedometer_total()==0 && lv_arc_get_value(widget(&lv_arc_class))==0,"Confirmed reset clears count and progress");
+    pedometer_init(millis());expect(pedometer_total()==0,"Manual reset survives counter restart");
+    load_step_fixture(12345);step(40);
+    expect(lv_arc_get_value(widget(&lv_arc_class))==STEP_GOAL && find(steps_screen,&lv_label_class,"12,345"),
+           "Goal ring stays full while counting beyond ten thousand");
+    capture("steps-goal");
+    load_step_fixture(UINT32_MAX);step(40);
+    expect(find(steps_screen,&lv_label_class,"4,294,967,295"),"Largest stored total renders without truncation");
+    capture("steps-large-total");
+    load_step_fixture(0);
     std::ofstream report(output / "report.json");
     report << "{\"passed\":" << passed << ",\"failed\":" << failures.size() << ",\"failures\":[";
     for (size_t i = 0; i < failures.size(); ++i) report << (i ? "," : "") << '"' << failures[i] << '"';

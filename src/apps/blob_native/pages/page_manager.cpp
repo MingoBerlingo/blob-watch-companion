@@ -1,6 +1,8 @@
 #include "apps/blob_native/pages/page_manager.h"
 
 #include <Arduino.h>
+#include "apps/blob_native/pages/steps/steps_page.h"
+#include "apps/blob_native/steps/pedometer.h"
 #include "apps/blob_native/blob/physics_settings.h"
 #include "apps/blob_native/pages/settings/settings_page.h"
 
@@ -22,6 +24,7 @@ namespace blob_native
             Timer,
             Brightness,
             Settings,
+            Steps,
         };
 
         Page g_page = Page::Blob;
@@ -47,7 +50,11 @@ namespace blob_native
             const int dx=static_cast<int>(touch.x)-g_press_x,dy=static_cast<int>(touch.y)-g_press_y;
             if(touch.touching && dx*dx+dy*dy>144) g_press_moved=true;
             // Settings owns its sliders: horizontal drags must not navigate.
-            if(g_page==Page::Settings) return;
+            if(g_page==Page::Settings || (g_page==Page::Steps && steps_page_reset_open())) return;
+            if(g_page==Page::Steps && touch.touching && !g_swipe_consumed && !g_press_moved &&
+               (millis()-g_press_ms>=650 || touch.gesture==WaveshareNativeTouchGesture::LongPress)) {
+                g_swipe_consumed=true;lv_port_block_touch_until_release();steps_page_request_reset();return;
+            }
             if(g_page==Page::Blob && touch.touching && !g_swipe_consumed && !g_press_moved &&
                (millis()-g_press_ms>=650 || touch.gesture==WaveshareNativeTouchGesture::LongPress)) {
                 g_swipe_consumed=true;
@@ -64,7 +71,13 @@ namespace blob_native
             g_swipe_consumed = true;
             lv_port_block_touch_until_release();
 
-            if (g_page == Page::Blob && touch.gesture == WaveshareNativeTouchGesture::Left)
+            if(g_page==Page::Blob && touch.gesture==WaveshareNativeTouchGesture::Right) {
+                blob_page_hide();steps_page_show();g_page=Page::Steps;
+            }
+            else if(g_page==Page::Steps && touch.gesture==WaveshareNativeTouchGesture::Left) {
+                blob_page_show();g_page=Page::Blob;
+            }
+            else if (g_page == Page::Blob && touch.gesture == WaveshareNativeTouchGesture::Left)
             {
                 timer_enter();
                 blob_page_hide();
@@ -112,6 +125,8 @@ namespace blob_native
 
     void page_manager_init()
     {
+        pedometer_init(millis());
+        steps_page_init();
         physics_settings_reset();
         physics_settings_load();
         settings_page_init();
@@ -131,6 +146,7 @@ namespace blob_native
         WaveshareNativeTouchSample touch = {false, 0, 0, WaveshareNativeTouchGesture::None};
         waveshare_native_poll_touch(&touch);
 
+        pedometer_tick(now_ms);
         timer_update_remaining(now_ms);
         navigate(touch);
 
@@ -138,6 +154,8 @@ namespace blob_native
         {
             timer_page_tick(now_ms);
         }
+
+        if(g_page==Page::Steps) steps_page_tick();
 
         lv_port_handler();
         delay(5);
